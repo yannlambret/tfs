@@ -1,0 +1,8 @@
+[user]
+	email = yann.lambret@gmail.com
+	name = Yann Lambret
+[core]
+	editor = vim
+	excludesfile = /home/yann/.gitignore
+[pull]
+	rebase = true
