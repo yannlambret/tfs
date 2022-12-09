@@ -11,12 +11,7 @@ import (
 	"github.com/yannlambret/tfs/pkg/tfs"
 )
 
-const repositoryURL = "https://releases.hashicorp.com/terraform/"
-
 var (
-	minVersion         string
-	showCurrentVersion bool
-
 	rootCmd = &cobra.Command{
 		Use:     `tfs`,
 		Short:   `Automatically fetch and configure the required version of Terraform binary`,
@@ -61,10 +56,14 @@ var (
 
 			if v != nil {
 				// Create and activate a release for the target semantic version.
-				release := tfs.NewRelease(v)
-				release.Init()
-				release.Install()
-				release.Activate()
+				release := tfs.NewRelease(v).Init()
+
+				if err := release.Install(); err != nil {
+					return err
+				}
+				if err := release.Activate(); err != nil {
+					return err
+				}
 			}
 
 			return nil
