@@ -28,7 +28,7 @@ func init() {
 	cache = new(localCache)
 	// Local cache directory is "${XDG_CACHE_HOME}/tfs" by default,
 	// or "${HOME}/.cache/tfs" as a fallback.
-	if directory, ok := os.LookupEnv("XDG_CACHE_HOME"); ok == true {
+	if directory, ok := os.LookupEnv("XDG_CACHE_HOME"); ok {
 		cache.Directory = filepath.Join(directory, "tfs")
 	} else {
 		cache.Directory = filepath.Join(os.Getenv("HOME"), ".cache", "tfs")

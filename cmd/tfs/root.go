@@ -13,9 +13,11 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:     `tfs`,
-		Short:   `Automatically fetch and configure the required version of Terraform binary`,
-		Example: `cd <path> && tfs`,
+		Use:           `tfs`,
+		Short:         `Automatically fetch and configure the required version of Terraform binary`,
+		Example:       `cd <path> && tfs`,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
