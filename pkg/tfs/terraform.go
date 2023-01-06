@@ -8,6 +8,11 @@ import (
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 )
 
+const (
+	tfDownloadURL    = "https://releases.hashicorp.com"
+	tfFileNamePrefix = "terraform_"
+)
+
 // getTfVersion looks for a version constraint in a set of Terraform manifest files.
 func GetTfVersion() (*semver.Version, error) {
 	var version string
@@ -41,8 +46,8 @@ func GetTfVersion() (*semver.Version, error) {
 		// No version defined in Terrafom configuration,
 		// so we activate the most recent available release.
 		ctx.Info("Did not find any version constrainst in Terraform configuration")
-		if !cache.isEmpty() {
-			return cache.LastRelease.Version, nil
+		if !Cache.isEmpty() {
+			return Cache.LastRelease.Version, nil
 		} else {
 			ctx.Info("No available Terraform binary")
 			return nil, nil

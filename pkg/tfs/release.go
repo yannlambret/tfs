@@ -12,8 +12,6 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-const tfDownloadURL = "https://releases.hashicorp.com"
-
 type release struct {
 	Version        *semver.Version
 	CacheDirectory string
@@ -30,10 +28,10 @@ func NewRelease(version *semver.Version) *release {
 
 func (r *release) Init() *release {
 	// The target directory for Terraform binary.
-	r.CacheDirectory = cache.Directory
+	r.CacheDirectory = Cache.Directory
 
 	// The local name of the Terraform binary.
-	r.FileName = "terraform_" + r.Version.String()
+	r.FileName = tfFileNamePrefix + r.Version.String()
 
 	// Terraform download URL prefix.
 	r.URLPrefix = fmt.Sprintf("%s/terraform/%s/terraform_%s", tfDownloadURL, r.Version.String(), r.Version.String())
@@ -112,11 +110,28 @@ func (r *release) Activate() error {
 	if _, err := os.Lstat(symlink); err == nil {
 		os.Remove(symlink)
 	}
+
+	// Create the symbolic link.
 	if err := os.Symlink(target, symlink); err != nil {
 		ctx.WithError(err).Error("Failed to create symlink")
 		return err
 	}
 	ctx.Info("New active version")
+
+	return nil
+}
+
+// Remove deletes a specific Terraform binary file version from the local cache.
+func (r *release) Remove() error {
+	f := filepath.Join(r.CacheDirectory, r.FileName)
+	ctx := log.WithFields(log.Fields{
+		"version":  r.Version.String(),
+		"fileName": f,
+	})
+	if err := os.Remove(f); err != nil {
+		ctx.WithError(err).Error("Unable to remove Terraform binary")
+		return err
+	}
 
 	return nil
 }

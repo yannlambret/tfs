@@ -41,7 +41,8 @@ var (
 				v   *semver.Version
 				err error
 			)
-			// The user wants to run a specific Terraform version
+
+			// The user wants to run a specific Terraform version.
 			if len(args) != 0 {
 				// Ignoring potential errors here because we have already
 				// checked that the argument is a valid semantic version.
@@ -77,8 +78,12 @@ func Execute() {
 	// Logging configuration.
 	log.SetHandler(cli.New(os.Stdout))
 
-	err := rootCmd.Execute()
-	if err != nil {
+	// Local available Terraform releases.
+	if err := tfs.Cache.Init(); err != nil {
+		os.Exit(1)
+	}
+
+	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
