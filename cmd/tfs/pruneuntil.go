@@ -14,7 +14,7 @@ var pruneuntilCmd = &cobra.Command{
 
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.ExactArgs(1)(cmd, args); err != nil {
-			log.Error("This command supports one positional argument exactly")
+			log.Error("This command supports exactly one positional argument")
 			return err
 		}
 		// Custom validation logic.

@@ -62,9 +62,9 @@ func (r *release) Install() error {
 	// installed, download it otherwise.
 	path := filepath.Join(r.CacheDirectory, r.FileName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		ctx.Info("Downloading Terraform binary")
+		ctx.Info("Downloading Terraform")
 		if err := getter.GetFile(path, r.URL); err != nil {
-			ctx.WithError(err).Error("Failed to download Terraform")
+			ctx.WithError(err).Error("Download failed")
 			return err
 		}
 	}
@@ -77,7 +77,7 @@ func (r *release) Install() error {
 func (r *release) Activate() error {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.WithError(err).Error("Unable to get user home directory")
+		log.WithError(err).Error("Failed to get user home directory")
 		return err
 	}
 
@@ -86,16 +86,15 @@ func (r *release) Activate() error {
 	symlink := filepath.Join(userBinDir, "terraform")
 
 	ctx := log.WithFields(log.Fields{
-		"version":    r.Version.String(),
-		"userBinDir": userBinDir,
-		"target":     target,
-		"symlink":    symlink,
+		"version": r.Version.String(),
+		"target":  target,
+		"symlink": symlink,
 	})
 
 	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
-		ctx.Info("Creating user local bin directory")
+		ctx.Info("Creating bin directory")
 		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
-			ctx.WithError(err).Error("Unable to create user local bin directory")
+			ctx.WithError(err).Error("Failed to create directory")
 			return err
 		}
 	}
@@ -129,9 +128,25 @@ func (r *release) Remove() error {
 		"fileName": f,
 	})
 	if err := os.Remove(f); err != nil {
-		ctx.WithError(err).Error("Unable to remove Terraform binary")
+		ctx.WithError(err).Error("Failed to remove Terraform binary file")
 		return err
 	}
 
 	return nil
+}
+
+// Size function returns the size of the Terraform binary file.
+func (r *release) Size() (float64, error) {
+	f := filepath.Join(Cache.Directory, r.FileName)
+	fi, err := os.Stat(f)
+	ctx := log.WithFields(log.Fields{
+		"version":  r.Version.String(),
+		"fileName": f,
+	})
+	if err != nil {
+		ctx.WithError(err).Error("Failed to get file information")
+		return 0, err
+	}
+
+	return float64(fi.Size()), nil
 }
