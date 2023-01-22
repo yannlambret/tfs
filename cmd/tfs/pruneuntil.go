@@ -9,7 +9,7 @@ import (
 
 var pruneuntilCmd = &cobra.Command{
 	Use:     "prune-until",
-	Short:   "Remove Terraform binary for the specified version and all the previous ones",
+	Short:   "Remove all Terraform binary versions prior to the one specified",
 	Example: `prune-until 1.3.0`,
 
 	Args: func(cmd *cobra.Command, args []string) error {

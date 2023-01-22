@@ -48,7 +48,7 @@ func (r *release) Init() *release {
 	return r
 }
 
-// Install download the required Terraform binary
+// Install downloads the required Terraform binary
 // and put it in the cache directory.
 func (r *release) Install() error {
 	ctx := log.WithFields(log.Fields{
@@ -72,7 +72,7 @@ func (r *release) Install() error {
 	return nil
 }
 
-// Activate create the symbolic link in the user path that
+// Activate creates the symbolic link in the user path that
 // points to the desired Terraform binary.
 func (r *release) Activate() error {
 	userHomeDir, err := os.UserHomeDir()
@@ -121,7 +121,7 @@ func (r *release) Activate() error {
 	return nil
 }
 
-// Remove deletes a specific Terraform binary file version from the local cache.
+// Remove deletes a specific Terraform binary file from the local cache.
 func (r *release) Remove() error {
 	f := filepath.Join(r.CacheDirectory, r.FileName)
 	ctx := log.WithFields(log.Fields{
