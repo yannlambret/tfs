@@ -75,6 +75,7 @@ func (c *localCache) Init() error {
 
 		c.LastRelease = c.Releases[len(c.Releases)-1]
 	}
+
 	return nil
 }
 
@@ -95,12 +96,12 @@ func (c *localCache) Prune() error {
 	return nil
 }
 
-// PruneUntil remove Terraform binary for the specified version and all the previous ones.
+// PruneUntil command removes all Terraform binary versions prior to the one specified.
 func (c *localCache) PruneUntil(version *semver.Version) error {
 	removed := 0
 	// Ignoring potential errors here because we have already
 	// checked that the argument is a valid semantic version.
-	constraint, _ := semver.NewConstraint("<= " + version.String())
+	constraint, _ := semver.NewConstraint("< " + version.String())
 	for _, release := range c.Releases {
 		if constraint.Check(release.Version) {
 			if err := release.Remove(); err != nil {

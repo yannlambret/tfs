@@ -6,6 +6,8 @@ on a daily basis. It has been inspired by [this project](https://github.com/warr
 `tfs` is simple and ligthweight, and rely on [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html)
 conventions.
 
+It works out of the box for every GNU/Linux distribution and macOS.
+
 ## Build
 
 ```text
