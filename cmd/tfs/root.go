@@ -24,7 +24,7 @@ var (
 				return nil
 			}
 			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
-				log.Error("This command supports one positional argument at most")
+				log.Error("This command supports at most one positional argument")
 				return err
 			}
 			// Custom validation logic.
@@ -79,7 +79,7 @@ func Execute() {
 	log.SetHandler(cli.New(os.Stdout))
 
 	// Local available Terraform releases.
-	if err := tfs.Cache.Init(); err != nil {
+	if err := tfs.Cache.Load(); err != nil {
 		os.Exit(1)
 	}
 

@@ -20,7 +20,7 @@ func GetTfVersion() (*semver.Version, error) {
 	path, err := os.Getwd()
 
 	if err != nil {
-		log.WithError(err).Error("Unable to get working directory")
+		log.WithError(err).Error("Failed to get working directory")
 		return nil, err
 	}
 
@@ -35,7 +35,7 @@ func GetTfVersion() (*semver.Version, error) {
 
 	module, diags := tfconfig.LoadModule(path)
 	if diags.HasErrors() {
-		ctx.WithError(diags.Err()).Error("Unable to load Terraform configuration")
+		ctx.WithError(diags.Err()).Error("Failed to load Terraform configuration")
 		return nil, diags.Err()
 	}
 
@@ -62,7 +62,7 @@ func GetTfVersion() (*semver.Version, error) {
 	v, err := semver.NewVersion(version)
 
 	if err != nil {
-		ctx.WithError(err).Error("Unable to extract Terraform version from local configuration")
+		ctx.WithError(err).Error("Failed to extract Terraform version from local configuration")
 		return nil, err
 	}
 
