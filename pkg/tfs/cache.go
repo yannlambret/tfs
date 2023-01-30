@@ -100,10 +100,6 @@ func (c *localCache) Size() (float64, error) {
 	return size, nil
 }
 
-func (c *localCache) List() error {
-	return nil
-}
-
 // Prune command can be used to wipe the whole cache.
 func (c *localCache) Prune() error {
 	var (
