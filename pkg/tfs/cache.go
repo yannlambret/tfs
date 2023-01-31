@@ -77,7 +77,7 @@ func (c *localCache) isEmpty() bool {
 	return len(c.Releases) == 0
 }
 
-// Size returns the total cache size.
+// Size returns the cache total size.
 func (c *localCache) Size() (float64, error) {
 	var size float64
 

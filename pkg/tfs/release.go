@@ -86,18 +86,22 @@ func (r *release) Activate() error {
 	symlink := filepath.Join(userBinDir, "terraform")
 
 	ctx := log.WithFields(log.Fields{
-		"version": r.Version.String(),
-		"target":  target,
-		"symlink": symlink,
+		"userBinDir": userBinDir,
 	})
 
 	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
 		ctx.Info("Creating bin directory")
 		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
-			ctx.WithError(err).Error("Failed to create directory")
+			ctx.WithError(err).Error("Operation failed")
 			return err
 		}
 	}
+
+	ctx = log.WithFields(log.Fields{
+		"version": r.Version.String(),
+		"target":  target,
+		"symlink": symlink,
+	})
 
 	// Check if the desired version is already active.
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
