@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/Masterminds/semver"
 	"github.com/apex/log"
 	"github.com/hashicorp/go-getter"
-
-	"github.com/Masterminds/semver"
+	"github.com/spf13/viper"
 )
 
 type release struct {
@@ -31,10 +31,10 @@ func (r *release) Init() *release {
 	r.CacheDirectory = Cache.Directory
 
 	// The local name of the Terraform binary.
-	r.FileName = tfFileNamePrefix + r.Version.String()
+	r.FileName = viper.GetString("terraform_file_name_prefix") + r.Version.String()
 
 	// Terraform download URL prefix.
-	r.URLPrefix = fmt.Sprintf("%s/terraform/%s/terraform_%s", tfDownloadURL, r.Version.String(), r.Version.String())
+	r.URLPrefix = fmt.Sprintf("%s/terraform/%s/terraform_%s", viper.GetString("terraform_download_url"), r.Version.String(), r.Version.String())
 
 	// Terraform binary download URL.
 	r.BinaryURL = fmt.Sprintf("%s_%s_%s.zip", r.URLPrefix, runtime.GOOS, runtime.GOARCH)

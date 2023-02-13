@@ -10,6 +10,11 @@ var pruneCmd = &cobra.Command{
 	Short: "Remove all Terraform binaries from the local cache",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Load local cache.
+		if err := tfs.Cache.Load(); err != nil {
+			return err
+		}
+
 		return tfs.Cache.Prune()
 	},
 }

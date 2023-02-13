@@ -8,11 +8,6 @@ import (
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 )
 
-const (
-	tfDownloadURL    = "https://releases.hashicorp.com"
-	tfFileNamePrefix = "terraform_"
-)
-
 // getTfVersion looks for a version constraint in a set of Terraform manifest files.
 func GetTfVersion() (*semver.Version, error) {
 	var version string

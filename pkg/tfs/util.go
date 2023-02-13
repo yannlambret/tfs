@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/spf13/viper"
 )
 
 // versionFromFileName extracts semantic version from Terraform binary file name.
 func versionFromFileName(fileName string) (*semver.Version, error) {
-	return semver.NewVersion(strings.ReplaceAll(fileName, tfFileNamePrefix, ""))
+	return semver.NewVersion(strings.ReplaceAll(fileName, viper.GetString("terraform_file_name_prefix"), ""))
 }
 
 // formatSize returns size in a human readable format.

@@ -2,13 +2,12 @@ package tfs
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 
-	"github.com/apex/log"
-
 	"github.com/Masterminds/semver"
+	"github.com/apex/log"
+	"github.com/spf13/viper"
 )
 
 type localCache struct {
@@ -22,13 +21,6 @@ var Cache *localCache
 
 func init() {
 	Cache = new(localCache)
-	// Local cache directory is "${XDG_CACHE_HOME}/tfs" by default,
-	// or "${HOME}/.cache/tfs" as a fallback.
-	if directory, ok := os.LookupEnv("XDG_CACHE_HOME"); ok {
-		Cache.Directory = filepath.Join(directory, "tfs")
-	} else {
-		Cache.Directory = filepath.Join(os.Getenv("HOME"), ".cache", "tfs")
-	}
 }
 
 func (c *localCache) Load() error {
@@ -40,7 +32,7 @@ func (c *localCache) Load() error {
 	c.Releases = make([]*release, 0)
 
 	// Cache state.
-	files, err := filepath.Glob(filepath.Join(c.Directory, tfFileNamePrefix+"*"))
+	files, err := filepath.Glob(filepath.Join(c.Directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
 		ctx.WithError(err).Error("Failed to load cache data")
 		return err
