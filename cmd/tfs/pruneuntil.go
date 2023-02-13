@@ -30,6 +30,12 @@ var pruneuntilCmd = &cobra.Command{
 		// Ignoring potential errors here because we have already
 		// checked that the argument is a valid semantic version.
 		v, _ := semver.NewVersion(args[0])
+
+		// Load local cache.
+		if err := tfs.Cache.Load(); err != nil {
+			return err
+		}
+
 		return tfs.Cache.PruneUntil(v)
 	},
 }

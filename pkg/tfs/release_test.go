@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -38,8 +39,8 @@ func TestRelease(t *testing.T) {
 		output := NewRelease(version).Init()
 
 		// Initialize the expected output.
-		filename := tfFileNamePrefix + version.String()
-		urlPrefix := fmt.Sprintf("%s/terraform/%s/terraform_%s", tfDownloadURL, version.String(), version.String())
+		filename := viper.GetString("terraform_file_name_prefix") + version.String()
+		urlPrefix := fmt.Sprintf("%s/terraform/%s/terraform_%s", viper.GetString("terraform_download_url"), version.String(), version.String())
 		binaryURL := fmt.Sprintf("%s_%s_%s.zip", urlPrefix, runtime.GOOS, runtime.GOARCH)
 		checksumURL := fmt.Sprintf("%s_SHA256SUMS", urlPrefix)
 		url := fmt.Sprintf("%s?checksum=file:%s", binaryURL, checksumURL)

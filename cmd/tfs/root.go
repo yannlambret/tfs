@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
 
 	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
@@ -42,6 +41,11 @@ var (
 				err error
 			)
 
+			// Load local cache.
+			if err := tfs.Cache.Load(); err != nil {
+				return err
+			}
+
 			// The user wants to run a specific Terraform version.
 			if len(args) != 0 {
 				// Ignoring potential errors here because we have already
@@ -75,14 +79,6 @@ var (
 )
 
 func Execute() {
-	// Logging configuration.
-	log.SetHandler(cli.New(os.Stdout))
-
-	// Local available Terraform releases.
-	if err := tfs.Cache.Load(); err != nil {
-		os.Exit(1)
-	}
-
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
