@@ -71,6 +71,9 @@ var (
 				if err := release.Activate(); err != nil {
 					return err
 				}
+				// Remove extra releases in order to keep
+				// a reasonable cache size.
+				tfs.Cache.AutoClean()
 			}
 
 			return nil

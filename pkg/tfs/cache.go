@@ -65,6 +65,28 @@ func (c *localCache) Load() error {
 	return nil
 }
 
+func (c *localCache) AutoClean() {
+	if !viper.GetBool("cache_auto_clean") {
+		// Feature disabled by the configuration.
+		return
+	}
+
+	// Reload cache contents.
+	c.Load()
+
+	// Maximal number of releases to keep in the cache.
+	cacheHistory := viper.GetInt("cache_history")
+
+	n := len(c.Releases) - cacheHistory
+	if n > 0 {
+		toBeRemoved := c.Releases[0:n]
+		for _, release := range toBeRemoved {
+			// Try to remove the file silently.
+			release.Remove()
+		}
+	}
+}
+
 func (c *localCache) isEmpty() bool {
 	return len(c.Releases) == 0
 }
