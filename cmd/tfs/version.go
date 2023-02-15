@@ -11,7 +11,7 @@ var versionCmd = &cobra.Command{
 	Use: "version",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		// Print current tfs version on stdout.
+		// Print current tfs version on standard output.
 		log.Info("tfs " + viper.GetString("version"))
 	},
 }
