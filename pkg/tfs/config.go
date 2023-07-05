@@ -9,7 +9,10 @@ import (
 )
 
 // Current software version.
-const version = "v0.1.0"
+const (
+	version = "v0.1.0"
+	padding = 36
+)
 
 func InitConfig() {
 	// Configuration file location is "${XDG_CONFIG_HOME}/tfs"
@@ -22,6 +25,7 @@ func InitConfig() {
 
 	viper.SetConfigName("config")
 	viper.Set("version", version)
+	viper.Set("padding", padding)
 
 	// Set configuration default values.
 
@@ -44,7 +48,9 @@ func InitConfig() {
 
 	// Number of Terraform releases to keep.
 	// Most recent releases will be kept in the cache.
-	viper.SetDefault("cache_history", 20) // 20 releases equal roughly 1.2G as of today.
+	viper.SetDefault("cache_history", 10) // 10 releases equal roughly 600M as of today.
+	viper.SetDefault("cache_minor_version_nb", 0)
+	viper.SetDefault("cache_patch_version_nb", 0)
 
 	// Find and read the configuration file.
 	err := viper.ReadInConfig()
@@ -58,11 +64,13 @@ func InitConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Ignoring this.
 		} else {
-			ctx.WithError(err).Error("Failed to load configuration")
+			ctx.WithError(err).Error(Align(padding, "Failed to load tfs configuration"))
 		}
 	} else {
 		// Configuration file found and successfully parsed.
-		ctx.Info("Configuration loaded")
+		if !viper.GetBool("quiet") {
+			ctx.Info(Align(padding, "Configuration loaded"))
+		}
 	}
 
 	// Set cache directory once and for all.

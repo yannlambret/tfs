@@ -15,7 +15,7 @@ func GetTfVersion() (*semver.Version, error) {
 	path, err := os.Getwd()
 
 	if err != nil {
-		log.WithError(err).Error("Failed to get working directory")
+		log.WithError(err).Error(Align(padding, "Failed to get working directory"))
 		return nil, err
 	}
 
@@ -24,13 +24,13 @@ func GetTfVersion() (*semver.Version, error) {
 	})
 
 	if !tfconfig.IsModuleDir(path) {
-		ctx.Info("Terraform configuration not found")
+		ctx.Info(Align(padding, "TF configuration not found"))
 		return nil, nil
 	}
 
 	module, diags := tfconfig.LoadModule(path)
 	if diags.HasErrors() {
-		ctx.WithError(diags.Err()).Error("Failed to load Terraform configuration")
+		ctx.WithError(diags.Err()).Error(Align(padding, "Failed to load TF configuration"))
 		return nil, diags.Err()
 	}
 
@@ -40,11 +40,11 @@ func GetTfVersion() (*semver.Version, error) {
 	} else {
 		// No version defined in Terrafom configuration,
 		// so we activate the most recent available release.
-		ctx.Info("Did not find any version constrainst in Terraform configuration")
+		ctx.Info(Align(padding, "Version constrainst not found"))
 		if !Cache.isEmpty() {
 			return Cache.LastRelease.Version, nil
 		} else {
-			ctx.Info("No available Terraform binary")
+			ctx.Info(Align(padding, "No available TF release"))
 			return nil, nil
 		}
 	}
@@ -57,7 +57,7 @@ func GetTfVersion() (*semver.Version, error) {
 	v, err := semver.NewVersion(version)
 
 	if err != nil {
-		ctx.WithError(err).Error("Failed to extract Terraform version from local configuration")
+		ctx.WithError(err).Error(Align(padding, "Failed to extract TF version"))
 		return nil, err
 	}
 

@@ -7,10 +7,13 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/yannlambret/tfs/pkg/tfs"
 )
 
 var (
+	quiet bool
+
 	rootCmd = &cobra.Command{
 		Use:           `tfs`,
 		Short:         `Automatically fetch and configure the required version of Terraform binary`,
@@ -23,12 +26,12 @@ var (
 				return nil
 			}
 			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
-				log.Error("This command supports at most one positional argument")
+				log.Error(tfs.Align(viper.GetInt("padding"), "tfs supports one positional argument"))
 				return err
 			}
 			// Custom validation logic.
 			if _, err := semver.NewVersion(args[0]); err != nil {
-				log.Error("Command argument should be a valid Terraform version")
+				log.Error(tfs.Align(viper.GetInt("padding"), "Argument is not a valid TF version"))
 				return err
 			}
 
@@ -82,6 +85,9 @@ var (
 )
 
 func Execute() {
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", true, "Reduce logging verbosity")
+	viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
+
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

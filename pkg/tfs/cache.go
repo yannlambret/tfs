@@ -34,7 +34,7 @@ func (c *localCache) Load() error {
 	// Cache state.
 	files, err := filepath.Glob(filepath.Join(c.Directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
-		ctx.WithError(err).Error("Failed to load cache data")
+		ctx.WithError(err).Error(Align(padding, "Failed to load cache data"))
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (c *localCache) Load() error {
 					"cacheDirectory": c.Directory,
 					"fileName":       filepath.Base(fileName),
 				})
-				ctx.WithError(err).Error("Invalid file name")
+				ctx.WithError(err).Error(Align(padding, "Invalid file name"))
 				return err
 			}
 			versions = append(versions, version)
@@ -63,28 +63,6 @@ func (c *localCache) Load() error {
 	}
 
 	return nil
-}
-
-func (c *localCache) AutoClean() {
-	if !viper.GetBool("cache_auto_clean") {
-		// Feature disabled by the configuration.
-		return
-	}
-
-	// Reload cache contents.
-	c.Load()
-
-	// Maximal number of releases to keep in the cache.
-	cacheHistory := viper.GetInt("cache_history")
-
-	n := len(c.Releases) - cacheHistory
-	if n > 0 {
-		toBeRemoved := c.Releases[0:n]
-		for _, release := range toBeRemoved {
-			// Try to remove the file silently.
-			release.Remove()
-		}
-	}
 }
 
 func (c *localCache) isEmpty() bool {
@@ -105,7 +83,7 @@ func (c *localCache) Size() (float64, error) {
 	for _, release := range c.Releases {
 		releaseSize, err := release.Size()
 		if err != nil {
-			ctx.WithError(err).Error("Failed to get cache size")
+			ctx.WithError(err).Error(Align(padding, "Failed to get cache size"))
 			return 0, err
 		}
 		size += releaseSize
@@ -144,7 +122,7 @@ func (c *localCache) Prune() error {
 		"reclaimedSpace": formatSize(reclaimed),
 	})
 
-	ctx.Info("Removed " + fmt.Sprintf("%d", removed) + " file(s)")
+	ctx.Info(Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"))
 
 	return nil
 }
@@ -185,7 +163,81 @@ func (c *localCache) PruneUntil(version *semver.Version) error {
 		"reclaimedSpace": formatSize(reclaimed),
 	})
 
-	ctx.Info("Removed " + fmt.Sprintf("%d", removed) + " file(s)")
+	ctx.Info(Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"))
 
 	return nil
+}
+
+// BulkDelete deletes all patch versions starting from the given minor version.
+func (c *localCache) BulkDelete(version *semver.Version) {
+	// ~1.2.3 is equivalent to >= 1.2.3, < 1.3.0
+	constraint, _ := semver.NewConstraint("~" + version.String())
+	for _, release := range c.Releases {
+		if constraint.Check(release.Version) {
+			// Try to remove the file silently.
+			release.Remove()
+		}
+	}
+}
+
+func (c *localCache) AutoClean() {
+	if !viper.GetBool("cache_auto_clean") || c.isEmpty() {
+		// Feature disabled by the configuration or empty cache.
+		return
+	}
+
+	// Reload cache contents.
+	c.Load()
+
+	// Maximal number of releases to keep in the cache.
+	if viper.GetInt("cache_minor_version_nb") != 0 && viper.GetInt("cache_patch_version_nb") != 0 {
+		// Create list of patches per minor release.
+		minorReleases := make(map[string][]string)
+		for _, release := range c.Releases[0:len(c.Releases)] {
+			version, _ := semver.NewVersion(fmt.Sprintf("%d.%d", release.Version.Major(), release.Version.Minor()))
+			minorReleases[version.String()] = append(minorReleases[version.String()], release.Version.String())
+		}
+		// Honoring the 'cache_minor_version_nb' configuration attribute.
+		keys := make([]string, 0)
+		for k := range minorReleases {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		n := len(keys) - viper.GetInt("cache_minor_version_nb")
+		if n > 0 {
+			toBeRemoved := keys[0:n]
+			for _, v := range toBeRemoved {
+				// Remove Terraform binary from disk.
+				version, _ := semver.NewVersion(v)
+				c.BulkDelete(version)
+				// Delete releases from the map.
+				delete(minorReleases, v)
+			}
+		}
+		// Honoring the 'cache_patch_version_nb' configuration attribute.
+		for _, values := range minorReleases {
+			sort.Strings(values)
+			n := len(values) - viper.GetInt("cache_patch_version_nb")
+			if n > 0 {
+				toBeRemoved := values[0:n]
+				for _, v := range toBeRemoved {
+					version, _ := semver.NewVersion(v)
+					NewRelease(version).Init().Remove()
+				}
+			}
+		}
+		return
+	}
+
+	// Default caching mode.
+	cacheHistory := viper.GetInt("cache_history")
+
+	n := len(c.Releases) - cacheHistory
+	if n > 0 {
+		toBeRemoved := c.Releases[0:n]
+		for _, release := range toBeRemoved {
+			// Try to remove the file silently.
+			release.Remove()
+		}
+	}
 }

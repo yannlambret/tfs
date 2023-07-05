@@ -62,9 +62,9 @@ func (r *release) Install() error {
 	// installed, download it otherwise.
 	path := filepath.Join(r.CacheDirectory, r.FileName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		ctx.Info("Downloading Terraform")
+		ctx.Info(Align(padding, "Downloading Terraform"))
 		if err := getter.GetFile(path, r.URL); err != nil {
-			ctx.WithError(err).Error("Download failed")
+			ctx.WithError(err).Error(Align(padding, "Download failed"))
 			return err
 		}
 	}
@@ -77,7 +77,7 @@ func (r *release) Install() error {
 func (r *release) Activate() error {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.WithError(err).Error("Failed to get user home directory")
+		log.WithError(err).Error(Align(padding, "Failed to get user home directory"))
 		return err
 	}
 
@@ -90,9 +90,9 @@ func (r *release) Activate() error {
 	})
 
 	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
-		ctx.Info("Creating bin directory")
+		ctx.Info(Align(padding, "Creating bin directory"))
 		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
-			ctx.WithError(err).Error("Operation failed")
+			ctx.WithError(err).Error(Align(padding, "Operation failed"))
 			return err
 		}
 	}
@@ -105,7 +105,7 @@ func (r *release) Activate() error {
 
 	// Check if the desired version is already active.
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
-		ctx.Info("Version is already active")
+		ctx.Info(Align(padding, "Version is already active"))
 		return nil
 	}
 
@@ -116,15 +116,15 @@ func (r *release) Activate() error {
 
 	// Create the symbolic link.
 	if err := os.Symlink(target, symlink); err != nil {
-		ctx.WithError(err).Error("Failed to create symlink")
+		ctx.WithError(err).Error(Align(padding, "Failed to create symlink"))
 		return err
 	}
-	ctx.Info("New active version")
+	ctx.Info(Align(padding, "New active version"))
 
 	return nil
 }
 
-// Remove deletes a specific Terraform binary file from the local cache.
+// Remove deletes a specific Terraform binary from the local cache.
 func (r *release) Remove() error {
 	f := filepath.Join(r.CacheDirectory, r.FileName)
 	ctx := log.WithFields(log.Fields{
@@ -132,14 +132,14 @@ func (r *release) Remove() error {
 		"fileName": f,
 	})
 	if err := os.Remove(f); err != nil {
-		ctx.WithError(err).Error("Failed to remove Terraform binary file")
+		ctx.WithError(err).Error(Align(padding, "Failed to remove TF binary"))
 		return err
 	}
 
 	return nil
 }
 
-// Size function returns the size of the Terraform binary file.
+// Size function returns the size of the Terraform binary.
 func (r *release) Size() (float64, error) {
 	f := filepath.Join(Cache.Directory, r.FileName)
 	fi, err := os.Stat(f)
@@ -148,7 +148,7 @@ func (r *release) Size() (float64, error) {
 		"fileName": f,
 	})
 	if err != nil {
-		ctx.WithError(err).Error("Failed to get file information")
+		ctx.WithError(err).Error(Align(padding, "Failed to get TF binary information"))
 		return 0, err
 	}
 
