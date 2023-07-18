@@ -22,8 +22,8 @@ type release struct {
 	URL            string
 }
 
-func NewRelease(version *semver.Version) *release {
-	return &release{Version: version}
+func NewRelease(v *semver.Version) *release {
+	return &release{Version: v}
 }
 
 func (r *release) Init() *release {

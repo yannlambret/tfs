@@ -86,7 +86,7 @@ cache_auto_clean: true # default value
 
 # Number of Terraform releases that you want to keep.
 # Most recent releases will be kept in the cache.
-cache_history: 10
+cache_history: 8
 
 # Slightly more sophisticated cache management.
 # Keep a specific number of Terraform releases
@@ -101,6 +101,6 @@ cache_history: 10
 #   * 1.5.0
 # When these two directives are commented out,
 # the option 'cache_history' is ignored.
-cache_minor_version_nb: 3
-cache_patch_version_nb: 2
+#cache_minor_version_nb: 3
+#cache_patch_version_nb: 2
 ```
