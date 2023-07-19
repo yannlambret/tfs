@@ -12,7 +12,7 @@ import (
 
 type localCache struct {
 	Directory   string
-	Releases    []*release
+	Releases    map[string]*release
 	LastRelease *release
 }
 
@@ -28,8 +28,8 @@ func (c *localCache) Load() error {
 		"cacheDirectory": c.Directory,
 	})
 
-	versions := make([]*semver.Version, 0)
-	c.Releases = make([]*release, 0)
+	c.Releases = make(map[string]*release)
+	c.LastRelease = nil
 
 	// Cache state.
 	files, err := filepath.Glob(filepath.Join(c.Directory, viper.GetString("terraform_file_name_prefix")+"*"))
@@ -49,17 +49,16 @@ func (c *localCache) Load() error {
 				ctx.WithError(err).Error(Align(padding, "Invalid file name"))
 				return err
 			}
-			versions = append(versions, version)
+			c.Releases[version.String()] = NewRelease(version).Init()
+			// Set the most recent cache release.
+			if c.LastRelease != nil {
+				constraint, _ := semver.NewConstraint("> " + c.LastRelease.Version.String())
+				if !constraint.Check(version) {
+					continue
+				}
+			}
+			c.LastRelease = c.Releases[version.String()]
 		}
-
-		sort.Sort(semver.Collection(versions))
-
-		// Set cache releases.
-		for _, version := range versions {
-			c.Releases = append(c.Releases, NewRelease(version).Init())
-		}
-
-		c.LastRelease = c.Releases[len(c.Releases)-1]
 	}
 
 	return nil
@@ -128,7 +127,7 @@ func (c *localCache) Prune() error {
 }
 
 // PruneUntil command removes all Terraform binary versions prior to the one specified.
-func (c *localCache) PruneUntil(version *semver.Version) error {
+func (c *localCache) PruneUntil(v *semver.Version) error {
 	var (
 		removed   int
 		reclaimed float64
@@ -136,7 +135,7 @@ func (c *localCache) PruneUntil(version *semver.Version) error {
 
 	// Ignoring potential errors here because we have already
 	// checked that the argument is a valid semantic version.
-	constraint, _ := semver.NewConstraint("< " + version.String())
+	constraint, _ := semver.NewConstraint("< " + v.String())
 
 	for _, release := range c.Releases {
 		if constraint.Check(release.Version) {
@@ -168,18 +167,6 @@ func (c *localCache) PruneUntil(version *semver.Version) error {
 	return nil
 }
 
-// BulkDelete deletes all patch versions starting from the given minor version.
-func (c *localCache) BulkDelete(version *semver.Version) {
-	// ~1.2.3 is equivalent to >= 1.2.3, < 1.3.0
-	constraint, _ := semver.NewConstraint("~" + version.String())
-	for _, release := range c.Releases {
-		if constraint.Check(release.Version) {
-			// Try to remove the file silently.
-			release.Remove()
-		}
-	}
-}
-
 func (c *localCache) AutoClean() {
 	if !viper.GetBool("cache_auto_clean") || c.isEmpty() {
 		// Feature disabled by the configuration or empty cache.
@@ -192,10 +179,13 @@ func (c *localCache) AutoClean() {
 	// Maximal number of releases to keep in the cache.
 	if viper.GetInt("cache_minor_version_nb") != 0 && viper.GetInt("cache_patch_version_nb") != 0 {
 		// Create list of patches per minor release.
-		minorReleases := make(map[string][]string)
-		for _, release := range c.Releases[0:len(c.Releases)] {
-			version, _ := semver.NewVersion(fmt.Sprintf("%d.%d", release.Version.Major(), release.Version.Minor()))
-			minorReleases[version.String()] = append(minorReleases[version.String()], release.Version.String())
+		minorReleases := make(map[string][]*semver.Version)
+		for _, r := range c.Releases {
+			v, _ := semver.NewVersion(fmt.Sprintf("%d.%d", r.Version.Major(), r.Version.Minor()))
+			minorReleases[v.String()] = append(minorReleases[v.String()], r.Version)
+		}
+		for _, releases := range minorReleases {
+			sort.Sort(semver.Collection(releases))
 		}
 		// Honoring the 'cache_minor_version_nb' configuration attribute.
 		keys := make([]string, 0)
@@ -206,23 +196,29 @@ func (c *localCache) AutoClean() {
 		n := len(keys) - viper.GetInt("cache_minor_version_nb")
 		if n > 0 {
 			toBeRemoved := keys[0:n]
-			for _, v := range toBeRemoved {
-				// Remove Terraform binary from disk.
-				version, _ := semver.NewVersion(v)
-				c.BulkDelete(version)
+			for _, version := range toBeRemoved {
+				// Remove file(s) from disk.
+				// ~1.2.3 is equivalent to >= 1.2.3, < 1.3.0
+				constraint, _ := semver.NewConstraint("~" + version)
+				// Remove file(s) from disk.
+				for _, release := range c.Releases {
+					if constraint.Check(release.Version) {
+						// Try to remove the file silently.
+						release.Remove()
+					}
+				}
 				// Delete releases from the map.
-				delete(minorReleases, v)
+				delete(minorReleases, version)
 			}
 		}
 		// Honoring the 'cache_patch_version_nb' configuration attribute.
 		for _, values := range minorReleases {
-			sort.Strings(values)
+			sort.Sort(semver.Collection(values))
 			n := len(values) - viper.GetInt("cache_patch_version_nb")
 			if n > 0 {
 				toBeRemoved := values[0:n]
-				for _, v := range toBeRemoved {
-					version, _ := semver.NewVersion(v)
-					NewRelease(version).Init().Remove()
+				for _, version := range toBeRemoved {
+					c.Releases[version.String()].Remove()
 				}
 			}
 		}
@@ -234,10 +230,14 @@ func (c *localCache) AutoClean() {
 
 	n := len(c.Releases) - cacheHistory
 	if n > 0 {
-		toBeRemoved := c.Releases[0:n]
-		for _, release := range toBeRemoved {
-			// Try to remove the file silently.
-			release.Remove()
+		keys := make([]string, 0)
+		for k := range c.Releases {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		toBeRemoved := keys[0:n]
+		for _, version := range toBeRemoved {
+			c.Releases[version].Remove()
 		}
 	}
 }

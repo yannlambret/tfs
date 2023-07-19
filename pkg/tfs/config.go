@@ -48,7 +48,7 @@ func InitConfig() {
 
 	// Number of Terraform releases to keep.
 	// Most recent releases will be kept in the cache.
-	viper.SetDefault("cache_history", 10) // 10 releases equal roughly 600M as of today.
+	viper.SetDefault("cache_history", 8)
 	viper.SetDefault("cache_minor_version_nb", 0)
 	viper.SetDefault("cache_patch_version_nb", 0)
 
