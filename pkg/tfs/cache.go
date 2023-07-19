@@ -197,7 +197,6 @@ func (c *localCache) AutoClean() {
 		if n > 0 {
 			toBeRemoved := keys[0:n]
 			for _, version := range toBeRemoved {
-				// Remove file(s) from disk.
 				// ~1.2.3 is equivalent to >= 1.2.3, < 1.3.0
 				constraint, _ := semver.NewConstraint("~" + version)
 				// Remove file(s) from disk.
