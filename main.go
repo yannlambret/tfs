@@ -1,10 +1,6 @@
 package main
 
 import (
-	"os"
-
-	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
 	"github.com/spf13/cobra"
 	"github.com/yannlambret/tfs/pkg/tfs"
 
@@ -12,9 +8,6 @@ import (
 )
 
 func main() {
-	// Logging configuration.
-	log.SetHandler(cli.New(os.Stdout))
-
 	// Application configuration.
 	cobra.OnInitialize(tfs.InitConfig)
 

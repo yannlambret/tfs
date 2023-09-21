@@ -2,12 +2,12 @@ package tfs
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 
 	"github.com/Masterminds/semver"
-	"github.com/apex/log"
 	"github.com/hashicorp/go-getter"
 	"github.com/spf13/viper"
 )
@@ -51,20 +51,20 @@ func (r *release) Init() *release {
 // Install downloads the required Terraform binary
 // and put it in the cache directory.
 func (r *release) Install() error {
-	ctx := log.WithFields(log.Fields{
-		"version":        r.Version.String(),
-		"cacheDirectory": r.CacheDirectory,
-		"fileName":       r.FileName,
-		"binaryURL":      r.BinaryURL,
-	})
+	slog := slog.With(
+		"version", r.Version.String(),
+		"cacheDirectory", r.CacheDirectory,
+		"fileName", r.FileName,
+		"binaryURL", r.BinaryURL,
+	)
 
 	// Check if the desired Terraform binary is already
 	// installed, download it otherwise.
 	path := filepath.Join(r.CacheDirectory, r.FileName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		ctx.Info(Align(padding, "Downloading Terraform"))
+		slog.Info(Align(padding, "Downloading Terraform"))
 		if err := getter.GetFile(path, r.URL); err != nil {
-			ctx.WithError(err).Error(Align(padding, "Download failed"))
+			slog.Error(Align(padding, "Download failed"), "error", err)
 			return err
 		}
 	}
@@ -77,7 +77,7 @@ func (r *release) Install() error {
 func (r *release) Activate() error {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.WithError(err).Error(Align(padding, "Failed to get user home directory"))
+		slog.Error(Align(padding, "Failed to get user home directory"), "error", err)
 		return err
 	}
 
@@ -85,27 +85,27 @@ func (r *release) Activate() error {
 	target := filepath.Join(r.CacheDirectory, r.FileName)
 	symlink := filepath.Join(userBinDir, "terraform")
 
-	ctx := log.WithFields(log.Fields{
-		"userBinDir": userBinDir,
-	})
+	slog := slog.With(
+		"userBinDir", userBinDir,
+	)
 
 	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
-		ctx.Info(Align(padding, "Creating bin directory"))
+		slog.Info(Align(padding, "Creating bin directory"))
 		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
-			ctx.WithError(err).Error(Align(padding, "Operation failed"))
+			slog.Error(Align(padding, "Operation failed"), "error", err)
 			return err
 		}
 	}
 
-	ctx = log.WithFields(log.Fields{
-		"version": r.Version.String(),
-		"target":  target,
-		"symlink": symlink,
-	})
+	slog = slog.With(
+		"version", r.Version.String(),
+		"target", target,
+		"symlink", symlink,
+	)
 
 	// Check if the desired version is already active.
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
-		ctx.Info(Align(padding, "Version is already active"))
+		slog.Info(Align(padding, "Version is already active"))
 		return nil
 	}
 
@@ -116,10 +116,10 @@ func (r *release) Activate() error {
 
 	// Create the symbolic link.
 	if err := os.Symlink(target, symlink); err != nil {
-		ctx.WithError(err).Error(Align(padding, "Failed to create symlink"))
+		slog.Error(Align(padding, "Failed to create symlink"), "error", "err")
 		return err
 	}
-	ctx.Info(Align(padding, "New active version"))
+	slog.Info(Align(padding, "New active version"))
 
 	return nil
 }
@@ -127,12 +127,13 @@ func (r *release) Activate() error {
 // Remove deletes a specific Terraform binary from the local cache.
 func (r *release) Remove() error {
 	f := filepath.Join(r.CacheDirectory, r.FileName)
-	ctx := log.WithFields(log.Fields{
-		"version":  r.Version.String(),
-		"fileName": f,
-	})
+	slog := slog.With(
+		"version", r.Version.String(),
+		"fileName", f,
+	)
+
 	if err := os.Remove(f); err != nil {
-		ctx.WithError(err).Error(Align(padding, "Failed to remove TF binary"))
+		slog.Error(Align(padding, "Failed to remove TF binary"), "error", err)
 		return err
 	}
 
@@ -140,17 +141,17 @@ func (r *release) Remove() error {
 }
 
 // Size function returns the size of the Terraform binary.
-func (r *release) Size() (float64, error) {
+func (r *release) Size() (uint64, error) {
 	f := filepath.Join(Cache.Directory, r.FileName)
 	fi, err := os.Stat(f)
-	ctx := log.WithFields(log.Fields{
-		"version":  r.Version.String(),
-		"fileName": f,
-	})
+	slog := slog.With(
+		"version", r.Version.String(),
+		"fileName", f,
+	)
 	if err != nil {
-		ctx.WithError(err).Error(Align(padding, "Failed to get TF binary information"))
+		slog.Error(Align(padding, "Failed to get TF binary information"), "error", err)
 		return 0, err
 	}
 
-	return float64(fi.Size()), nil
+	return uint64(fi.Size()), nil
 }

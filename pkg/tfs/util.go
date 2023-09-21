@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/viper"
 )
 
@@ -20,19 +21,6 @@ func Align(padding int, message string) string {
 }
 
 // formatSize returns size in a human readable format.
-func formatSize(size float64) string {
-	var (
-		k float64 = 1024
-		m float64 = k * 1024
-		g float64 = m * 1024
-	)
-
-	switch true {
-	case (size >= m && size < g):
-		return fmt.Sprintf("%.0fM", size/m)
-	case (size >= g):
-		return fmt.Sprintf("%.1fG", size/g)
-	default:
-		return fmt.Sprintf("%.0fB", size)
-	}
+func formatSize(size uint64) string {
+	return humanize.Bytes(size)
 }
