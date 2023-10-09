@@ -1,10 +1,10 @@
 package tfs
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/Masterminds/semver"
-	"github.com/apex/log"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 )
 
@@ -15,22 +15,20 @@ func GetTfVersion() (*semver.Version, error) {
 	path, err := os.Getwd()
 
 	if err != nil {
-		log.WithError(err).Error(Align(padding, "Failed to get working directory"))
+		slog.Error(Align(padding, "Failed to get working directory"), "error", err)
 		return nil, err
 	}
 
-	ctx := log.WithFields(log.Fields{
-		"path": path,
-	})
+	slog := slog.With("path", path)
 
 	if !tfconfig.IsModuleDir(path) {
-		ctx.Info(Align(padding, "TF configuration not found"))
+		slog.Info(Align(padding, "TF configuration not found (are you in a module folder?)"))
 		return nil, nil
 	}
 
 	module, diags := tfconfig.LoadModule(path)
 	if diags.HasErrors() {
-		ctx.WithError(diags.Err()).Error(Align(padding, "Failed to load TF configuration"))
+		slog.Error(Align(padding, "Failed to load TF configuration"), "error", diags.Err())
 		return nil, diags.Err()
 	}
 
@@ -40,24 +38,24 @@ func GetTfVersion() (*semver.Version, error) {
 	} else {
 		// No version defined in Terrafom configuration,
 		// so we activate the most recent available release.
-		ctx.Info(Align(padding, "Version constrainst not found"))
+		slog.Info(Align(padding, "Version constrainst not found"))
 		if !Cache.isEmpty() {
 			return Cache.LastRelease.Version, nil
 		} else {
-			ctx.Info(Align(padding, "No available TF release"))
+			slog.Info(Align(padding, "No available TF release"))
 			return nil, nil
 		}
 	}
 
-	ctx = log.WithFields(log.Fields{
-		"path":    path,
-		"version": version,
-	})
+	slog = slog.With(
+		"path", path,
+		"version", version,
+	)
 
 	v, err := semver.NewVersion(version)
 
 	if err != nil {
-		ctx.WithError(err).Error(Align(padding, "Failed to extract TF version"))
+		slog.Error(Align(padding, "Failed to extract TF version"), "error", err)
 		return nil, err
 	}
 

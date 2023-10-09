@@ -1,10 +1,10 @@
 package tfs
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 
-	"github.com/apex/log"
 	"github.com/spf13/viper"
 )
 
@@ -17,7 +17,7 @@ const (
 func InitConfig() {
 	// Configuration file location is "${XDG_CONFIG_HOME}/tfs"
 	// by default, or "${HOME}/.config/tfs" as a fallback.
-	if directory, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
+	if directory, err := os.UserConfigDir(); err == nil {
 		viper.AddConfigPath(filepath.Join(directory, "tfs"))
 	} else {
 		viper.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "tfs"))
@@ -55,21 +55,21 @@ func InitConfig() {
 	// Find and read the configuration file.
 	err := viper.ReadInConfig()
 
-	ctx := log.WithFields(log.Fields{
-		"configDirectory": filepath.Dir(viper.ConfigFileUsed()),
-		"fileName":        filepath.Base(viper.ConfigFileUsed()),
-	})
+	slog := slog.With(
+		"configDirectory", filepath.Dir(viper.ConfigFileUsed()),
+		"fileName", filepath.Base(viper.ConfigFileUsed()),
+	)
 
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Ignoring this.
 		} else {
-			ctx.WithError(err).Error(Align(padding, "Failed to load tfs configuration"))
+			slog.Error(Align(padding, "Failed to load tfs configuration"), "error", err)
 		}
 	} else {
 		// Configuration file found and successfully parsed.
 		if !viper.GetBool("quiet") {
-			ctx.Info(Align(padding, "Configuration loaded"))
+			slog.Info(Align(padding, "Configuration loaded"))
 		}
 	}
 

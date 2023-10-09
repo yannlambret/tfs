@@ -2,11 +2,11 @@ package tfs
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"sort"
 
 	"github.com/Masterminds/semver"
-	"github.com/apex/log"
 	"github.com/spf13/viper"
 )
 
@@ -24,9 +24,7 @@ func init() {
 }
 
 func (c *localCache) Load() error {
-	ctx := log.WithFields(log.Fields{
-		"cacheDirectory": c.Directory,
-	})
+	slog := slog.With(slog.String("cacheDirectory", c.Directory))
 
 	c.Releases = make(map[string]*release)
 	c.LastRelease = nil
@@ -34,7 +32,7 @@ func (c *localCache) Load() error {
 	// Cache state.
 	files, err := filepath.Glob(filepath.Join(c.Directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
-		ctx.WithError(err).Error(Align(padding, "Failed to load cache data"))
+		slog.Error(Align(padding, "Failed to load cache data"), "error", err)
 		return err
 	}
 
@@ -42,11 +40,8 @@ func (c *localCache) Load() error {
 		for _, fileName := range files {
 			version, err := versionFromFileName(filepath.Base(fileName))
 			if err != nil {
-				ctx := log.WithFields(log.Fields{
-					"cacheDirectory": c.Directory,
-					"fileName":       filepath.Base(fileName),
-				})
-				ctx.WithError(err).Error(Align(padding, "Invalid file name"))
+				slog := slog.With("fileName", filepath.Base(fileName))
+				slog.Error(Align(padding, "Invalid file name"), "error", err)
 				return err
 			}
 			c.Releases[version.String()] = NewRelease(version).Init()
@@ -69,20 +64,18 @@ func (c *localCache) isEmpty() bool {
 }
 
 // Size returns the cache total size.
-func (c *localCache) Size() (float64, error) {
-	var size float64
+func (c *localCache) Size() (uint64, error) {
+	var size uint64
 
 	// Reload cache contents.
 	c.Load()
 
-	ctx := log.WithFields(log.Fields{
-		"cacheDirectory": c.Directory,
-	})
+	slog := slog.With(slog.String("cacheDirectory", c.Directory))
 
 	for _, release := range c.Releases {
 		releaseSize, err := release.Size()
 		if err != nil {
-			ctx.WithError(err).Error(Align(padding, "Failed to get cache size"))
+			slog.Error(Align(padding, "Failed to get cache size"), "error", err)
 			return 0, err
 		}
 		size += releaseSize
@@ -95,7 +88,7 @@ func (c *localCache) Size() (float64, error) {
 func (c *localCache) Prune() error {
 	var (
 		removed   int
-		reclaimed float64
+		reclaimed uint64
 	)
 
 	for _, release := range c.Releases {
@@ -115,13 +108,13 @@ func (c *localCache) Prune() error {
 		return err
 	}
 
-	ctx := log.WithFields(log.Fields{
-		"cacheDirectory": c.Directory,
-		"cacheSize":      formatSize(cacheSize),
-		"reclaimedSpace": formatSize(reclaimed),
-	})
-
-	ctx.Info(Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"))
+	slog.Info(
+		Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"),
+		"cacheDirectory", c.Directory,
+		"cacheSize", formatSize(cacheSize),
+		"reclaimedSpace", formatSize(reclaimed),
+		"removed", removed,
+	)
 
 	return nil
 }
@@ -130,7 +123,7 @@ func (c *localCache) Prune() error {
 func (c *localCache) PruneUntil(v *semver.Version) error {
 	var (
 		removed   int
-		reclaimed float64
+		reclaimed uint64
 	)
 
 	// Ignoring potential errors here because we have already
@@ -156,13 +149,13 @@ func (c *localCache) PruneUntil(v *semver.Version) error {
 		return err
 	}
 
-	ctx := log.WithFields(log.Fields{
-		"cacheDirectory": c.Directory,
-		"cacheSize":      formatSize(cacheSize),
-		"reclaimedSpace": formatSize(reclaimed),
-	})
-
-	ctx.Info(Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"))
+	slog.Info(
+		Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"),
+		"cacheDirectory", c.Directory,
+		"cacheSize", formatSize(cacheSize),
+		"reclaimedSpace", formatSize(reclaimed),
+		"removed", removed,
+	)
 
 	return nil
 }

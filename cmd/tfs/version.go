@@ -1,7 +1,7 @@
 package tfs
 
 import (
-	"github.com/apex/log"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -13,7 +13,7 @@ var versionCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		// Print current tfs version on standard output.
-		log.Info(tfs.Align(viper.GetInt("padding"), "tfs "+viper.GetString("version")))
+		slog.Info(tfs.Align(viper.GetInt("padding"), "tfs "+viper.GetString("version")), "version", viper.GetString("version"))
 	},
 }
 

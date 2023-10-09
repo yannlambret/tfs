@@ -2,17 +2,21 @@ package tfs
 
 import (
 	"os"
+	"time"
 
-	"github.com/apex/log"
+	"log/slog"
 
 	"github.com/Masterminds/semver"
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/yannlambret/tfs/pkg/tfs"
 )
 
 var (
-	quiet bool
+	quiet    bool
+	LogLevel = new(slog.LevelVar)
 
 	rootCmd = &cobra.Command{
 		Use:           `tfs`,
@@ -26,12 +30,12 @@ var (
 				return nil
 			}
 			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
-				log.Error(tfs.Align(viper.GetInt("padding"), "tfs supports one positional argument"))
+				slog.Error(tfs.Align(viper.GetInt("padding"), "tfs supports one positional argument"))
 				return err
 			}
 			// Custom validation logic.
 			if _, err := semver.NewVersion(args[0]); err != nil {
-				log.Error(tfs.Align(viper.GetInt("padding"), "Argument is not a valid TF version"))
+				slog.Error(tfs.Align(viper.GetInt("padding"), "Argument is not a valid TF version"))
 				return err
 			}
 
@@ -91,4 +95,16 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func init() {
+	w := os.Stderr
+	handler := tint.NewHandler(w, &tint.Options{
+		Level:      LogLevel,
+		NoColor:    !isatty.IsTerminal(w.Fd()),
+		TimeFormat: time.Kitchen,
+	})
+
+	// set global logger with custom options
+	slog.SetDefault(slog.New(handler))
 }
