@@ -20,7 +20,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:           `tfs`,
-		Short:         `Automatically fetch and configure the required version of Terraform binary`,
+		Short:         `Automatically fetch and configure the required version of the Terraform binary`,
 		Example:       `cd <path> && tfs`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -105,6 +105,6 @@ func init() {
 		TimeFormat: time.Kitchen,
 	})
 
-	// set global logger with custom options
+	// Set global logger with custom options.
 	slog.SetDefault(slog.New(handler))
 }
