@@ -37,7 +37,7 @@ func InitConfig() {
 
 	// Local cache directory is "${XDG_CACHE_HOME}/tfs"
 	// by default, or "${HOME}/.cache/tfs" as a fallback.
-	if directory, ok := os.LookupEnv("XDG_CACHE_HOME"); ok {
+	if directory, err := os.UserCacheDir(); err == nil {
 		viper.SetDefault("cache_directory", filepath.Join(directory, "tfs"))
 	} else {
 		viper.SetDefault("cache_directory", filepath.Join(os.Getenv("HOME"), ".cache", "tfs"))
