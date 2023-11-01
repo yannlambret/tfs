@@ -12,18 +12,50 @@ import (
 const version = "v0.1.0"
 
 func InitConfig() {
-	// Configuration file location is "${XDG_CONFIG_HOME}/tfs"
-	// by default, or "${HOME}/.config/tfs" as a fallback.
-	if directory, err := os.UserConfigDir(); err == nil {
-		viper.AddConfigPath(filepath.Join(directory, "tfs"))
-	} else {
-		viper.AddConfigPath(filepath.Join(os.Getenv("HOME"), ".config", "tfs"))
+	userHomeDir, err := os.UserHomeDir()
+
+	if err != nil {
+		slog.Error("Failed to get user home directory", "error", err)
+		// This error should really not happen and as far as I'm concerned,
+		// is unrecoverable. We have no choice but to give up.
+		os.Exit(1)
 	}
 
+	// Configuration file location is "${XDG_CONFIG_HOME}/tfs"
+	// by default, or "${HOME}/.config/tfs" as a fallback.
+	userConfigDir, err := os.UserConfigDir()
+
+	if err != nil {
+		userConfigDir = filepath.Join(userHomeDir, ".config")
+	}
+
+	viper.AddConfigPath(filepath.Join(userConfigDir, "tfs"))
 	viper.SetConfigName("config")
+
+	// Local cache directory is "${XDG_CACHE_HOME}/tfs"
+	// by default, or "${HOME}/.cache/tfs" as a fallback.
+	userCacheDir, err := os.UserCacheDir()
+
+	if err != nil {
+		userCacheDir = filepath.Join(userHomeDir, ".cache")
+	}
+
+	/* Configuration default values */
+
+	// Software version.
 	viper.Set("version", version)
 
-	// Set configuration default values.
+	// User home directory.
+	viper.SetDefault("user_home_directory", userHomeDir)
+
+	// User-specific configurations directory.
+	viper.SetDefault("user_config_directory", userConfigDir)
+
+	// User-specific executable files directory.
+	viper.SetDefault("user_bin_directory", filepath.Join(userHomeDir, ".local", "bin"))
+
+	// Application configuration directory.
+	viper.SetDefault("config_directory", filepath.Join(userConfigDir, "tfs"))
 
 	// Terraform download URL.
 	viper.SetDefault("terraform_download_url", "https://releases.hashicorp.com")
@@ -31,13 +63,8 @@ func InitConfig() {
 	// File names in the cache will be of the form <prefix> + <semver>.
 	viper.SetDefault("terraform_file_name_prefix", "terraform_")
 
-	// Local cache directory is "${XDG_CACHE_HOME}/tfs"
-	// by default, or "${HOME}/.cache/tfs" as a fallback.
-	if directory, err := os.UserCacheDir(); err == nil {
-		viper.SetDefault("cache_directory", filepath.Join(directory, "tfs"))
-	} else {
-		viper.SetDefault("cache_directory", filepath.Join(os.Getenv("HOME"), ".cache", "tfs"))
-	}
+	// Application cache directory.
+	viper.SetDefault("cache_directory", filepath.Join(userCacheDir, "tfs"))
 
 	// Keep a limited number of release files in the cache.
 	viper.SetDefault("cache_auto_clean", true)
@@ -48,8 +75,10 @@ func InitConfig() {
 	viper.SetDefault("cache_minor_version_nb", 0)
 	viper.SetDefault("cache_patch_version_nb", 0)
 
+	/* Configuration dynamic values */
+
 	// Find and read the configuration file.
-	err := viper.ReadInConfig()
+	err = viper.ReadInConfig()
 
 	slog := slog.With(
 		"configDirectory", filepath.Dir(viper.ConfigFileUsed()),
