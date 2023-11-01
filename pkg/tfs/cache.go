@@ -32,7 +32,7 @@ func (c *localCache) Load() error {
 	// Cache state.
 	files, err := filepath.Glob(filepath.Join(c.Directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
-		slog.Error(Align(padding, "Failed to load cache data"), "error", err)
+		slog.Error("Failed to load cache data", "error", err)
 		return err
 	}
 
@@ -41,7 +41,7 @@ func (c *localCache) Load() error {
 			version, err := versionFromFileName(filepath.Base(fileName))
 			if err != nil {
 				slog := slog.With("fileName", filepath.Base(fileName))
-				slog.Error(Align(padding, "Invalid file name"), "error", err)
+				slog.Error("Invalid file name", "error", err)
 				return err
 			}
 			c.Releases[version.String()] = NewRelease(version).Init()
@@ -75,7 +75,7 @@ func (c *localCache) Size() (uint64, error) {
 	for _, release := range c.Releases {
 		releaseSize, err := release.Size()
 		if err != nil {
-			slog.Error(Align(padding, "Failed to get cache size"), "error", err)
+			slog.Error("Failed to get cache size", "error", err)
 			return 0, err
 		}
 		size += releaseSize
@@ -109,7 +109,7 @@ func (c *localCache) Prune() error {
 	}
 
 	slog.Info(
-		Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"),
+		"Removed "+fmt.Sprintf("%d", removed)+" file(s)",
 		"cacheDirectory", c.Directory,
 		"cacheSize", formatSize(cacheSize),
 		"reclaimedSpace", formatSize(reclaimed),
@@ -150,7 +150,7 @@ func (c *localCache) PruneUntil(v *semver.Version) error {
 	}
 
 	slog.Info(
-		Align(padding, "Removed "+fmt.Sprintf("%d", removed)+" file(s)"),
+		"Removed "+fmt.Sprintf("%d", removed)+" file(s)",
 		"cacheDirectory", c.Directory,
 		"cacheSize", formatSize(cacheSize),
 		"reclaimedSpace", formatSize(reclaimed),

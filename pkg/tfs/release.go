@@ -62,9 +62,9 @@ func (r *release) Install() error {
 	// installed, download it otherwise.
 	path := filepath.Join(r.CacheDirectory, r.FileName)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		slog.Info(Align(padding, "Downloading Terraform"))
+		slog.Info("Downloading Terraform")
 		if err := getter.GetFile(path, r.URL); err != nil {
-			slog.Error(Align(padding, "Download failed"), "error", err)
+			slog.Error("Download failed", "error", err)
 			return err
 		}
 	}
@@ -77,10 +77,12 @@ func (r *release) Install() error {
 func (r *release) Activate() error {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		slog.Error(Align(padding, "Failed to get user home directory"), "error", err)
+		slog.Error("Failed to get user home directory", "error", err)
 		return err
 	}
 
+	// TODO: check if the folder belongs to the PATH variable,
+	// raise a warning otherwise.
 	userBinDir := filepath.Join(userHomeDir, ".local", "bin")
 	target := filepath.Join(r.CacheDirectory, r.FileName)
 	symlink := filepath.Join(userBinDir, "terraform")
@@ -90,9 +92,9 @@ func (r *release) Activate() error {
 	)
 
 	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
-		slog.Info(Align(padding, "Creating bin directory"))
+		slog.Info("Creating user local bin directory")
 		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
-			slog.Error(Align(padding, "Operation failed"), "error", err)
+			slog.Error("Operation failed", "error", err)
 			return err
 		}
 	}
@@ -105,7 +107,7 @@ func (r *release) Activate() error {
 
 	// Check if the desired version is already active.
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
-		slog.Info(Align(padding, "Version is already active"))
+		slog.Info("Version is already active")
 		return nil
 	}
 
@@ -116,10 +118,10 @@ func (r *release) Activate() error {
 
 	// Create the symbolic link.
 	if err := os.Symlink(target, symlink); err != nil {
-		slog.Error(Align(padding, "Failed to create symlink"), "error", "err")
+		slog.Error("Failed to create symlink", "error", "err")
 		return err
 	}
-	slog.Info(Align(padding, "New active version"))
+	slog.Info("New active version")
 
 	return nil
 }
@@ -133,7 +135,7 @@ func (r *release) Remove() error {
 	)
 
 	if err := os.Remove(f); err != nil {
-		slog.Error(Align(padding, "Failed to remove TF binary"), "error", err)
+		slog.Error("Failed to remove TF binary", "error", err)
 		return err
 	}
 
@@ -149,7 +151,7 @@ func (r *release) Size() (uint64, error) {
 		"fileName", f,
 	)
 	if err != nil {
-		slog.Error(Align(padding, "Failed to get TF binary information"), "error", err)
+		slog.Error("Failed to get TF binary information", "error", err)
 		return 0, err
 	}
 

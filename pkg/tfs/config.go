@@ -9,10 +9,7 @@ import (
 )
 
 // Current software version.
-const (
-	version = "v0.1.0"
-	padding = 36
-)
+const version = "v0.1.0"
 
 func InitConfig() {
 	// Configuration file location is "${XDG_CONFIG_HOME}/tfs"
@@ -25,7 +22,6 @@ func InitConfig() {
 
 	viper.SetConfigName("config")
 	viper.Set("version", version)
-	viper.Set("padding", padding)
 
 	// Set configuration default values.
 
@@ -64,12 +60,12 @@ func InitConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Ignoring this.
 		} else {
-			slog.Error(Align(padding, "Failed to load tfs configuration"), "error", err)
+			slog.Error("Failed to load tfs configuration", "error", err)
 		}
 	} else {
 		// Configuration file found and successfully parsed.
 		if !viper.GetBool("quiet") {
-			slog.Info(Align(padding, "Configuration loaded"))
+			slog.Info("Configuration loaded")
 		}
 	}
 

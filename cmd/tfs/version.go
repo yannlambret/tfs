@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/yannlambret/tfs/pkg/tfs"
 )
 
 var versionCmd = &cobra.Command{
@@ -13,7 +12,7 @@ var versionCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		// Print current tfs version on standard output.
-		slog.Info(tfs.Align(viper.GetInt("padding"), "tfs "+viper.GetString("version")), "version", viper.GetString("version"))
+		slog.Info("tfs "+viper.GetString("version"), "version", viper.GetString("version"))
 	},
 }
 
