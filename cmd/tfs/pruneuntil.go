@@ -5,7 +5,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/yannlambret/tfs/pkg/tfs"
 )
 
@@ -16,12 +15,12 @@ var pruneuntilCmd = &cobra.Command{
 
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.ExactArgs(1)(cmd, args); err != nil {
-			slog.Error(tfs.Align(viper.GetInt("padding"), "tfs supports one positional argument"))
+			slog.Error("This command supports one positional argument exactly")
 			return err
 		}
 		// Custom validation logic.
 		if _, err := semver.NewVersion(args[0]); err != nil {
-			slog.Error(tfs.Align(viper.GetInt("padding"), "Argument is not a valid TF version"))
+			slog.Error("Command argument should be a valid Terraform version")
 			return err
 		}
 

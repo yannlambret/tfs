@@ -30,12 +30,12 @@ var (
 				return nil
 			}
 			if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
-				slog.Error(tfs.Align(viper.GetInt("padding"), "tfs supports one positional argument"))
+				slog.Error("This command supports one positional argument at most")
 				return err
 			}
 			// Custom validation logic.
 			if _, err := semver.NewVersion(args[0]); err != nil {
-				slog.Error(tfs.Align(viper.GetInt("padding"), "Argument is not a valid TF version"))
+				slog.Error("Command argument should be a valid Terraform version")
 				return err
 			}
 
