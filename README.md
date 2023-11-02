@@ -86,7 +86,7 @@ cache_auto_clean: true # default value
 
 # Number of Terraform releases that you want to keep.
 # Most recent releases will be kept in the cache.
-cache_history: 8
+cache_history: 8 # default value
 
 # Slightly more sophisticated cache management.
 # Keep a specific number of Terraform releases
@@ -103,4 +103,69 @@ cache_history: 8
 # the option 'cache_history' is ignored.
 #cache_minor_version_nb: 3
 #cache_patch_version_nb: 2
+```
+
+Sometimes, an additional version can be kept in the cache, if you intend to use
+a release that should have been removed otherwise.
+
+Consider this scenario (using the same configuration settings as above):
+
+```
+$ tfs prune # cache is now empty
+```
+
+```
+$ tfs 1.5.2
+$ tfs 1.5.3
+```
+
+The cache now contains the following releases:
+
+```
+$ ls -1 ~/.cache/tfs
+terraform_1.5.2
+terraform_1.5.3
+```
+
+Now let's download the 1.5.4 version:
+
+```
+$ tfs 1.5.4
+```
+
+As we should expect, the version 1.5.2 has been removed because we want to keep
+at most two patch versions:
+
+```
+$ ls -1 ~/.cache/tfs
+terraform_1.5.3
+terraform_1.5.4
+```
+
+Now suppose that you need to work with Terraform 1.5.1:
+
+```
+$ tfs 1.5.1
+```
+
+In this specific scenario, the command should download the 1.5.1 binary and
+remove it immediately before exiting. Obviously, this is not what you want
+and this is not what happens:
+
+```
+$ ls -1 ~/.cache/tfs
+terraform_1.5.1
+terraform_1.5.3
+terraform_1.5.4
+```
+
+When downloading a Terraform release, `tfs` will flag it as active to prevent
+it from being removed, whatever the cache content may be. If you switch back
+later to Terraform 1.5.4, the 1.5.1 version will be removed as usual:
+
+```
+$ tfs 1.5.4
+$ ls -1 ~/.cache/tfs
+terraform_1.5.3
+terraform_1.5.4
 ```

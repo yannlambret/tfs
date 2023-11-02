@@ -80,6 +80,7 @@ var (
 				}
 				// Remove extra releases in order to keep
 				// a reasonable cache size.
+				tfs.Cache.ActiveRelease = release // We don't want the last downloaded version to be removed.
 				tfs.Cache.AutoClean()
 			}
 
