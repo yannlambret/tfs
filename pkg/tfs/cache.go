@@ -11,9 +11,10 @@ import (
 )
 
 type localCache struct {
-	Directory   string
-	Releases    map[string]*release
-	LastRelease *release
+	Directory     string
+	Releases      map[string]*release
+	LastRelease   *release
+	ActiveRelease *release
 }
 
 // Disk location where Terraform binaries are kept.
@@ -45,7 +46,7 @@ func (c *localCache) Load() error {
 				return err
 			}
 			c.Releases[version.String()] = NewRelease(version).Init()
-			// Set the most recent cache release.
+			// Set cache most recent release.
 			if c.LastRelease != nil {
 				constraint, _ := semver.NewConstraint("> " + c.LastRelease.Version.String())
 				if !constraint.Check(version) {
@@ -194,7 +195,7 @@ func (c *localCache) AutoClean() {
 				constraint, _ := semver.NewConstraint("~" + version)
 				// Remove file(s) from disk.
 				for _, release := range c.Releases {
-					if constraint.Check(release.Version) {
+					if constraint.Check(release.Version) && !release.SameAs(c.ActiveRelease) {
 						// Try to remove the file silently.
 						release.Remove()
 					}
@@ -210,7 +211,9 @@ func (c *localCache) AutoClean() {
 			if n > 0 {
 				toBeRemoved := values[0:n]
 				for _, version := range toBeRemoved {
-					c.Releases[version.String()].Remove()
+					if !c.Releases[version.String()].SameAs(c.ActiveRelease) {
+						c.Releases[version.String()].Remove()
+					}
 				}
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 
 	"github.com/Masterminds/semver"
@@ -156,4 +157,9 @@ func (r *release) Size() (uint64, error) {
 	}
 
 	return uint64(fi.Size()), nil
+}
+
+// SameAs compares the current release and the given release.
+func (r *release) SameAs(ref *release) bool {
+	return reflect.DeepEqual(r, ref)
 }
