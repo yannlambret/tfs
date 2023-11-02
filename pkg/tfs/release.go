@@ -76,15 +76,8 @@ func (r *release) Install() error {
 // Activate creates the symbolic link in the user path that
 // points to the desired Terraform binary.
 func (r *release) Activate() error {
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		slog.Error("Failed to get user home directory", "error", err)
-		return err
-	}
+	userBinDir := viper.GetString("user_bin_directory")
 
-	// TODO: check if the folder belongs to the PATH variable,
-	// raise a warning otherwise.
-	userBinDir := filepath.Join(userHomeDir, ".local", "bin")
 	target := filepath.Join(r.CacheDirectory, r.FileName)
 	symlink := filepath.Join(userBinDir, "terraform")
 
@@ -135,8 +128,19 @@ func (r *release) Remove() error {
 		"fileName", f,
 	)
 
+	// Check if we should also remove the symbolic link.
+	userBinDir := viper.GetString("user_bin_directory")
+
+	target := filepath.Join(r.CacheDirectory, r.FileName)
+	symlink := filepath.Join(userBinDir, "terraform")
+
+	if path, _ := filepath.EvalSymlinks(symlink); path == target {
+		slog.Info(path)
+		os.Remove(symlink)
+	}
+
 	if err := os.Remove(f); err != nil {
-		slog.Error("Failed to remove TF binary", "error", err)
+		slog.Error("Failed to remove Terraform binary", "error", err)
 		return err
 	}
 
@@ -152,7 +156,7 @@ func (r *release) Size() (uint64, error) {
 		"fileName", f,
 	)
 	if err != nil {
-		slog.Error("Failed to get TF binary information", "error", err)
+		slog.Error("Failed to get Terraform binary information", "error", err)
 		return 0, err
 	}
 

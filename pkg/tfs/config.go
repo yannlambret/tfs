@@ -52,6 +52,7 @@ func InitConfig() {
 	viper.SetDefault("user_config_directory", userConfigDir)
 
 	// User-specific executable files directory.
+	// TODO: check if the folder belongs to the PATH variable, raise a warning otherwise.
 	viper.SetDefault("user_bin_directory", filepath.Join(userHomeDir, ".local", "bin"))
 
 	// Application configuration directory.
