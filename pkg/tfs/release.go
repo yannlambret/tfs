@@ -91,6 +91,7 @@ func (r *release) Activate() error {
 			slog.Error("Operation failed", "error", err)
 			return err
 		}
+		slog.Warn("Make sure to add local bin directory to PATH environment variable")
 	}
 
 	slog = slog.With(
