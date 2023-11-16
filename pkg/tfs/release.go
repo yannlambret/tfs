@@ -34,7 +34,7 @@ func (r *release) Install() error {
 	// installed, download it otherwise.
 	targetPath := filepath.Join(r.parentCache.directory, r.fileName)
 
-	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+	if _, err := AppFs.Stat(targetPath); os.IsNotExist(err) {
 		ctx := context.Background()
 		i := install.NewInstaller()
 		defer i.Remove(ctx)
@@ -85,9 +85,9 @@ func (r *release) Activate() error {
 		"userBinDir", userBinDir,
 	)
 
-	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
+	if _, err := AppFs.Stat(userBinDir); os.IsNotExist(err) {
 		slog.Info("Creating user local bin directory")
-		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
+		if err := AppFs.MkdirAll(userBinDir, os.ModePerm); err != nil {
 			slog.Error("Operation failed", "error", err)
 			return err
 		}
@@ -107,12 +107,14 @@ func (r *release) Activate() error {
 	}
 
 	// Remove the link if it exists.
-	if _, err := os.Lstat(symlink); err == nil {
-		os.Remove(symlink)
+	if _, b, err := AppFs.LstatIfPossible(symlink); !b {
+		slog.Warn("The operating system does not seem to support `os.Lstat`", "error", err)
+	} else if err == nil {
+		AppFs.Remove(symlink)
 	}
 
 	// Create the symbolic link.
-	if err := os.Symlink(target, symlink); err != nil {
+	if err := AppFs.SymlinkIfPossible(target, symlink); err != nil {
 		slog.Error("Failed to create symlink", "error", "err")
 		return err
 	}
@@ -137,11 +139,11 @@ func (r *release) Remove() error {
 	)
 
 	// Check if we should also remove the symbolic link.
-	if path, _ := filepath.EvalSymlinks(symlink); path == target {
-		os.Remove(symlink)
+	if path, ok, _ := AppFs.EvalSymlinksIfPossible(symlink); ok && path == target {
+		AppFs.Remove(symlink)
 	}
 
-	if err := os.Remove(target); err != nil {
+	if err := AppFs.Remove(target); err != nil {
 		slog.Error("Failed to remove Terraform binary", "error", err)
 		return err
 	}
@@ -158,7 +160,7 @@ func (r *release) Size() (uint64, error) {
 		"fileName", target,
 	)
 
-	fi, err := os.Stat(target)
+	fi, err := AppFs.Stat(target)
 
 	if err != nil {
 		slog.Error("Failed to get Terraform binary information", "error", err)
