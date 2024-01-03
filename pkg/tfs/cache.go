@@ -232,7 +232,9 @@ func (c *localCache) AutoClean() {
 		sort.Strings(keys)
 		toBeRemoved := keys[0:n]
 		for _, version := range toBeRemoved {
-			c.Releases[version].Remove()
+			if !c.Releases[version].SameAs(c.ActiveRelease) {
+				c.Releases[version].Remove()
+			}
 		}
 	}
 }
