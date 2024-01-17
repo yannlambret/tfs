@@ -62,7 +62,7 @@ func (r *release) Install() error {
 	// Check if the desired Terraform binary is already
 	// installed, download it otherwise.
 	path := filepath.Join(r.CacheDirectory, r.FileName)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, err := AppFs.Stat(path); os.IsNotExist(err) {
 		slog.Info("Downloading Terraform")
 		if err := getter.GetFile(path, r.URL); err != nil {
 			slog.Error("Download failed", "error", err)
@@ -85,9 +85,9 @@ func (r *release) Activate() error {
 		"userBinDir", userBinDir,
 	)
 
-	if _, err := os.Stat(userBinDir); os.IsNotExist(err) {
+	if _, err := AppFs.Stat(userBinDir); os.IsNotExist(err) {
 		slog.Info("Creating user local bin directory")
-		if err := os.MkdirAll(userBinDir, os.ModePerm); err != nil {
+		if err := AppFs.MkdirAll(userBinDir, os.ModePerm); err != nil {
 			slog.Error("Operation failed", "error", err)
 			return err
 		}
@@ -107,12 +107,14 @@ func (r *release) Activate() error {
 	}
 
 	// Remove the link if it exists.
-	if _, err := os.Lstat(symlink); err == nil {
-		os.Remove(symlink)
+	if _, b, err := AppFs.LstatIfPossible(symlink); !b {
+		slog.Warn("The operating system does not seem to support `os.Lstat`", "error", err)
+	} else if err == nil {
+		AppFs.Remove(symlink)
 	}
 
 	// Create the symbolic link.
-	if err := os.Symlink(target, symlink); err != nil {
+	if err := AppFs.SymlinkIfPossible(target, symlink); err != nil {
 		slog.Error("Failed to create symlink", "error", "err")
 		return err
 	}
@@ -137,10 +139,10 @@ func (r *release) Remove() error {
 
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
 		slog.Info(path)
-		os.Remove(symlink)
+		AppFs.Remove(symlink)
 	}
 
-	if err := os.Remove(f); err != nil {
+	if err := AppFs.Remove(f); err != nil {
 		slog.Error("Failed to remove Terraform binary", "error", err)
 		return err
 	}
@@ -151,7 +153,7 @@ func (r *release) Remove() error {
 // Size function returns the size of the Terraform binary.
 func (r *release) Size() (uint64, error) {
 	f := filepath.Join(Cache.Directory, r.FileName)
-	fi, err := os.Stat(f)
+	fi, err := AppFs.Stat(f)
 	slog := slog.With(
 		"version", r.Version.String(),
 		"fileName", f,
