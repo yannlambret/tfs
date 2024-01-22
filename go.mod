@@ -7,7 +7,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/hashicorp/go-getter v1.7.3
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230201191712-8cad743c8c26
-	github.com/lmittmann/tint v1.0.3
+	github.com/lmittmann/tint v1.0.4
 	github.com/mattn/go-isatty v0.0.20
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
