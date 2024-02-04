@@ -3,18 +3,22 @@ package tfs
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sort"
 
 	"github.com/Masterminds/semver"
+	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/viper"
 )
 
 type localCache struct {
-	Directory     string
-	Releases      map[string]*release
-	LastRelease   *release
-	ActiveRelease *release
+	Directory      string
+	Releases       map[string]*release
+	LastRelease    *release
+	CurrentRelease *release
+	ActiveRelease  *release
 }
 
 // Disk location where Terraform binaries are kept.
@@ -45,6 +49,7 @@ func (c *localCache) Load() error {
 				slog.Error("Invalid file name", "error", err)
 				return err
 			}
+			// Initialize the release.
 			c.Releases[version.String()] = NewRelease(version).Init()
 			// Set cache most recent release.
 			if c.LastRelease != nil {
@@ -62,6 +67,34 @@ func (c *localCache) Load() error {
 
 func (c *localCache) isEmpty() bool {
 	return len(c.Releases) == 0
+}
+
+func (c *localCache) List() error {
+	// Reload cache contents.
+	c.Load()
+
+	versions := make([]string, 0)
+	for k := range c.Releases {
+		versions = append(versions, k)
+	}
+	sort.Strings(versions)
+
+	for _, v := range versions {
+		r := c.Releases[v]
+		if isatty.IsTerminal(os.Stderr.Fd()) {
+			if r.SameAs(c.ActiveRelease) {
+				color.New(color.FgHiCyan, color.Bold).Println(v + " (active)")
+			} else {
+				fmt.Println(v)
+			}
+		} else {
+			slog.Info("release",
+				slog.String("version", v),
+				slog.Bool("isActive", r.SameAs(c.ActiveRelease)),
+			)
+		}
+	}
+	return nil
 }
 
 // Size returns the cache total size.
@@ -195,7 +228,7 @@ func (c *localCache) AutoClean() {
 				constraint, _ := semver.NewConstraint("~" + version)
 				// Remove file(s) from disk.
 				for _, release := range c.Releases {
-					if constraint.Check(release.Version) && !release.SameAs(c.ActiveRelease) {
+					if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
 						// Try to remove the file silently.
 						release.Remove()
 					}
@@ -211,7 +244,7 @@ func (c *localCache) AutoClean() {
 			if n > 0 {
 				toBeRemoved := values[0:n]
 				for _, version := range toBeRemoved {
-					if !c.Releases[version.String()].SameAs(c.ActiveRelease) {
+					if !c.Releases[version.String()].SameAs(c.CurrentRelease) {
 						c.Releases[version.String()].Remove()
 					}
 				}
@@ -232,7 +265,7 @@ func (c *localCache) AutoClean() {
 		sort.Strings(keys)
 		toBeRemoved := keys[0:n]
 		for _, version := range toBeRemoved {
-			if !c.Releases[version].SameAs(c.ActiveRelease) {
+			if !c.Releases[version].SameAs(c.CurrentRelease) {
 				c.Releases[version].Remove()
 			}
 		}

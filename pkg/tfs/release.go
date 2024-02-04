@@ -28,6 +28,12 @@ func NewRelease(v *semver.Version) *release {
 }
 
 func (r *release) Init() *release {
+	var (
+		userBinDir = viper.GetString("user_bin_directory")
+		symlink    = filepath.Join(userBinDir, "terraform")
+		target, _  = filepath.EvalSymlinks(symlink)
+	)
+
 	// The target directory for Terraform binary.
 	r.CacheDirectory = Cache.Directory
 
@@ -46,6 +52,11 @@ func (r *release) Init() *release {
 	// Full download URL.
 	r.URL = fmt.Sprintf("%s?checksum=file:%s", r.BinaryURL, r.ChecksumURL)
 
+	// Already installed and active?
+	if target == filepath.Join(r.CacheDirectory, r.FileName) {
+		Cache.ActiveRelease = r
+	}
+
 	return r
 }
 
@@ -61,14 +72,20 @@ func (r *release) Install() error {
 
 	// Check if the desired Terraform binary is already
 	// installed, download it otherwise.
-	path := filepath.Join(r.CacheDirectory, r.FileName)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	target := filepath.Join(r.CacheDirectory, r.FileName)
+
+	if _, err := os.Stat(target); os.IsNotExist(err) {
 		slog.Info("Downloading Terraform")
-		if err := getter.GetFile(path, r.URL); err != nil {
+		if err := getter.GetFile(target, r.URL); err != nil {
 			slog.Error("Download failed", "error", err)
 			return err
 		}
 	}
+
+	// Keep track of the current release for we don't
+	// want the last downloaded version to be removed
+	// by the cache cleanup routine.
+	Cache.CurrentRelease = r
 
 	return nil
 }
@@ -76,10 +93,11 @@ func (r *release) Install() error {
 // Activate creates the symbolic link in the user path that
 // points to the desired Terraform binary.
 func (r *release) Activate() error {
-	userBinDir := viper.GetString("user_bin_directory")
-
-	target := filepath.Join(r.CacheDirectory, r.FileName)
-	symlink := filepath.Join(userBinDir, "terraform")
+	var (
+		userBinDir = viper.GetString("user_bin_directory")
+		symlink    = filepath.Join(userBinDir, "terraform")
+		target     = filepath.Join(r.CacheDirectory, r.FileName)
+	)
 
 	slog := slog.With(
 		"userBinDir", userBinDir,
@@ -101,7 +119,7 @@ func (r *release) Activate() error {
 	)
 
 	// Check if the desired version is already active.
-	if path, _ := filepath.EvalSymlinks(symlink); path == target {
+	if r.SameAs(Cache.ActiveRelease) {
 		slog.Info("Version is already active")
 		return nil
 	}
@@ -116,6 +134,8 @@ func (r *release) Activate() error {
 		slog.Error("Failed to create symlink", "error", "err")
 		return err
 	}
+
+	Cache.ActiveRelease = r
 	slog.Info("New active version")
 
 	return nil
@@ -123,24 +143,24 @@ func (r *release) Activate() error {
 
 // Remove deletes a specific Terraform binary from the local cache.
 func (r *release) Remove() error {
-	f := filepath.Join(r.CacheDirectory, r.FileName)
+	var (
+		userBinDir = viper.GetString("user_bin_directory")
+		symlink    = filepath.Join(userBinDir, "terraform")
+		target     = filepath.Join(r.CacheDirectory, r.FileName)
+	)
+
 	slog := slog.With(
 		"version", r.Version.String(),
-		"fileName", f,
+		"fileName", target,
 	)
 
 	// Check if we should also remove the symbolic link.
-	userBinDir := viper.GetString("user_bin_directory")
-
-	target := filepath.Join(r.CacheDirectory, r.FileName)
-	symlink := filepath.Join(userBinDir, "terraform")
-
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
 		slog.Info(path)
 		os.Remove(symlink)
 	}
 
-	if err := os.Remove(f); err != nil {
+	if err := os.Remove(target); err != nil {
 		slog.Error("Failed to remove Terraform binary", "error", err)
 		return err
 	}
@@ -150,12 +170,15 @@ func (r *release) Remove() error {
 
 // Size function returns the size of the Terraform binary.
 func (r *release) Size() (uint64, error) {
-	f := filepath.Join(Cache.Directory, r.FileName)
-	fi, err := os.Stat(f)
+	target := filepath.Join(Cache.Directory, r.FileName)
+
 	slog := slog.With(
 		"version", r.Version.String(),
-		"fileName", f,
+		"fileName", target,
 	)
+
+	fi, err := os.Stat(target)
+
 	if err != nil {
 		slog.Error("Failed to get Terraform binary information", "error", err)
 		return 0, err
