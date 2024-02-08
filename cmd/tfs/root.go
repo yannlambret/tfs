@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	quiet    bool
-	LogLevel = new(slog.LevelVar)
+	quiet bool
 
 	rootCmd = &cobra.Command{
 		Use:           `tfs`,
@@ -80,7 +79,6 @@ var (
 				}
 				// Remove extra releases in order to keep
 				// a reasonable cache size.
-				tfs.Cache.ActiveRelease = release // We don't want the last downloaded version to be removed.
 				tfs.Cache.AutoClean()
 			}
 
@@ -99,12 +97,23 @@ func Execute() {
 }
 
 func init() {
+	var handler slog.Handler
+
+	LogLevel := new(slog.LevelVar)
 	w := os.Stderr
-	handler := tint.NewHandler(w, &tint.Options{
-		Level:      LogLevel,
-		NoColor:    !isatty.IsTerminal(w.Fd()),
-		TimeFormat: time.Kitchen,
-	})
+
+	if isatty.IsTerminal(w.Fd()) {
+		handler = tint.NewHandler(w, &tint.Options{
+			Level:      LogLevel,
+			NoColor:    false,
+			TimeFormat: time.Kitchen,
+		})
+	} else {
+		handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
+			Level:     LogLevel,
+			AddSource: false,
+		})
+	}
 
 	// Set global logger with custom options.
 	slog.SetDefault(slog.New(handler))
