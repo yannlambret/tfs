@@ -11,6 +11,11 @@ var listCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Load local cache.
+		if err := tfs.Cache.Load(); err != nil {
+			return err
+		}
+
 		return tfs.Cache.List()
 	},
 }

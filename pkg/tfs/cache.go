@@ -70,9 +70,6 @@ func (c *localCache) isEmpty() bool {
 }
 
 func (c *localCache) List() error {
-	// Reload cache contents.
-	c.Load()
-
 	versions := make([]string, 0)
 	for k := range c.Releases {
 		versions = append(versions, k)

@@ -42,6 +42,12 @@ Terraform version that has been downloaded so far.
 $ tfs 1.3.2
 ```
 
+* Listing cache contents:
+
+```
+$ tfs list
+```
+
 * Cleaning up the cache:
 
 ```
