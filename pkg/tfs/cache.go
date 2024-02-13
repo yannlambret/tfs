@@ -28,6 +28,8 @@ func init() {
 	Cache = new(localCache)
 }
 
+// Load builds the cache state based on the Terraform versions
+// that have already been downloaded in the cache directory.
 func (c *localCache) Load() error {
 	slog := slog.With(slog.String("cacheDirectory", c.Directory))
 
@@ -65,10 +67,12 @@ func (c *localCache) Load() error {
 	return nil
 }
 
+// isEmpty allows to check if the cache is empty.
 func (c *localCache) isEmpty() bool {
 	return len(c.Releases) == 0
 }
 
+// List command displays the contents of the local cache.
 func (c *localCache) List() error {
 	versions := make([]string, 0)
 	for k := range c.Releases {
@@ -192,13 +196,13 @@ func (c *localCache) PruneUntil(v *semver.Version) error {
 }
 
 func (c *localCache) AutoClean() {
-	if !viper.GetBool("cache_auto_clean") || c.isEmpty() {
-		// Feature disabled by the configuration or empty cache.
-		return
-	}
-
 	// Reload cache contents.
 	c.Load()
+
+	if !viper.GetBool("cache_auto_clean") {
+		// Feature disabled by the configuration.
+		return
+	}
 
 	// Maximal number of releases to keep in the cache.
 	if viper.GetInt("cache_minor_version_nb") != 0 && viper.GetInt("cache_patch_version_nb") != 0 {

@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const version = "v0.1.0"
+const version = "v1.0.0"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
