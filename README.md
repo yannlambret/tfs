@@ -128,9 +128,9 @@ $ tfs 1.5.3
 The cache now contains the following releases:
 
 ```
-$ ls -1 ~/.cache/tfs
-terraform_1.5.2
-terraform_1.5.3
+$ tfs list
+1.5.2
+1.5.3 (active)
 ```
 
 Now let's download the 1.5.4 version:
@@ -143,9 +143,9 @@ As we should expect, the version 1.5.2 has been removed because we want to keep
 at most two patch versions:
 
 ```
-$ ls -1 ~/.cache/tfs
-terraform_1.5.3
-terraform_1.5.4
+$ tfs list
+1.5.3
+1.5.4 (active)
 ```
 
 Now suppose that you need to work with Terraform 1.5.1:
@@ -159,10 +159,10 @@ remove it immediately before exiting. Obviously, this is not what you want
 and this is not what happens:
 
 ```
-$ ls -1 ~/.cache/tfs
-terraform_1.5.1
-terraform_1.5.3
-terraform_1.5.4
+$ tfs list
+1.5.1 (active)
+1.5.3
+1.5.4
 ```
 
 When downloading a Terraform release, `tfs` will flag it as active to prevent
@@ -171,7 +171,7 @@ later to Terraform 1.5.4, the 1.5.1 version will be removed as usual:
 
 ```
 $ tfs 1.5.4
-$ ls -1 ~/.cache/tfs
-terraform_1.5.3
-terraform_1.5.4
+$ tfs list
+1.5.3
+1.5.4 (active)
 ```
