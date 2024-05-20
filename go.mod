@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.17.0
 	github.com/hashicorp/go-getter v1.7.4
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230201191712-8cad743c8c26
 	github.com/lmittmann/tint v1.0.4
