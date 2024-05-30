@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const tfsVersion = "v1.0.0"
+const tfsVersion = "v1.1.0"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
@@ -57,9 +57,6 @@ func InitConfig() {
 
 	// Application configuration directory.
 	viper.SetDefault("config_directory", filepath.Join(userConfigDir, "tfs"))
-
-	// Terraform download URL.
-	viper.SetDefault("terraform_download_url", "https://releases.hashicorp.com")
 
 	// File names in the cache will be of the form <prefix> + <semver>.
 	viper.SetDefault("terraform_file_name_prefix", "terraform_")

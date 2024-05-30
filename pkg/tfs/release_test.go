@@ -1,9 +1,7 @@
 package tfs
 
 import (
-	"fmt"
 	"reflect"
-	"runtime"
 	"testing"
 
 	"github.com/hashicorp/go-version"
@@ -40,19 +38,11 @@ func TestRelease(t *testing.T) {
 
 		// Initialize the expected output.
 		filename := viper.GetString("terraform_file_name_prefix") + v.String()
-		urlPrefix := fmt.Sprintf("%s/terraform/%s/terraform_%s", viper.GetString("terraform_download_url"), v.String(), v.String())
-		binaryURL := fmt.Sprintf("%s_%s_%s.zip", urlPrefix, runtime.GOOS, runtime.GOARCH)
-		checksumURL := fmt.Sprintf("%s_SHA256SUMS", urlPrefix)
-		url := fmt.Sprintf("%s?checksum=file:%s", binaryURL, checksumURL)
 
 		expectedOutput := &release{
 			Version:        v,
 			CacheDirectory: Cache.Directory,
 			FileName:       filename,
-			URLPrefix:      urlPrefix,
-			BinaryURL:      binaryURL,
-			ChecksumURL:    checksumURL,
-			URL:            url,
 		}
 
 		// Compare the output to the expected output.
