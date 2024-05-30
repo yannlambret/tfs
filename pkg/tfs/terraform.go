@@ -4,13 +4,13 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/Masterminds/semver"
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 )
 
 // getTfVersion looks for a version constraint in a set of Terraform manifest files.
-func GetTfVersion() (*semver.Version, error) {
-	var version string
+func GetTfVersion() (*version.Version, error) {
+	var tfVersion string
 
 	path, err := os.Getwd()
 
@@ -34,7 +34,7 @@ func GetTfVersion() (*semver.Version, error) {
 
 	// Get Terraform semantic version for current configuration.
 	if len(module.RequiredCore) != 0 {
-		version = module.RequiredCore[0]
+		tfVersion = module.RequiredCore[0]
 	} else {
 		// No version defined in Terrafom configuration,
 		// so we activate the most recent available release.
@@ -49,10 +49,10 @@ func GetTfVersion() (*semver.Version, error) {
 
 	slog = slog.With(
 		"path", path,
-		"version", version,
+		"version", tfVersion,
 	)
 
-	v, err := semver.NewVersion(version)
+	v, err := version.NewVersion(tfVersion)
 
 	if err != nil {
 		slog.Error("Failed to extract Terraform version from local configuration", "error", err)

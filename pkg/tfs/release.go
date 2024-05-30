@@ -8,13 +8,13 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/Masterminds/semver"
 	"github.com/hashicorp/go-getter"
+	"github.com/hashicorp/go-version"
 	"github.com/spf13/viper"
 )
 
 type release struct {
-	Version        *semver.Version
+	Version        *version.Version
 	CacheDirectory string
 	FileName       string
 	URLPrefix      string
@@ -23,7 +23,7 @@ type release struct {
 	URL            string
 }
 
-func NewRelease(v *semver.Version) *release {
+func NewRelease(v *version.Version) *release {
 	return &release{Version: v}
 }
 
