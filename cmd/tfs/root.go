@@ -6,7 +6,7 @@ import (
 
 	"log/slog"
 
-	"github.com/Masterminds/semver"
+	"github.com/hashicorp/go-version"
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ var (
 				return err
 			}
 			// Custom validation logic.
-			if _, err := semver.NewVersion(args[0]); err != nil {
+			if _, err := version.NewVersion(args[0]); err != nil {
 				slog.Error("Command argument should be a valid Terraform version")
 				return err
 			}
@@ -43,7 +43,7 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
-				v   *semver.Version
+				v   *version.Version
 				err error
 			)
 
@@ -56,7 +56,7 @@ var (
 			if len(args) != 0 {
 				// Ignoring potential errors here because we have already
 				// checked that the argument is a valid semantic version.
-				v, _ = semver.NewVersion(args[0])
+				v, _ = version.NewVersion(args[0])
 			} else {
 				// Terraform configuratin parsing. If a specific version
 				// is defined in the 'terraform' block, we will try to use it.

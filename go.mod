@@ -3,10 +3,10 @@ module github.com/yannlambret/tfs
 go 1.21
 
 require (
-	github.com/Masterminds/semver v1.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.17.0
 	github.com/hashicorp/go-getter v1.7.4
+	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230201191712-8cad743c8c26
 	github.com/lmittmann/tint v1.0.4
 	github.com/mattn/go-isatty v0.0.20
@@ -34,7 +34,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
-	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

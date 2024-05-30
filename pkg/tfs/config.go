@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const version = "v1.0.0"
+const tfsVersion = "v1.0.0"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
@@ -43,7 +43,7 @@ func InitConfig() {
 	/* Configuration default values */
 
 	// Software version.
-	viper.Set("version", version)
+	viper.Set("version", tfsVersion)
 
 	// User home directory.
 	viper.SetDefault("user_home_directory", userHomeDir)

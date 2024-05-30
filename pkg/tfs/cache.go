@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/Masterminds/semver"
 	"github.com/fatih/color"
+	"github.com/hashicorp/go-version"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/viper"
 )
@@ -45,22 +45,22 @@ func (c *localCache) Load() error {
 
 	if len(files) > 0 {
 		for _, fileName := range files {
-			version, err := versionFromFileName(filepath.Base(fileName))
+			tfVersion, err := versionFromFileName(filepath.Base(fileName))
 			if err != nil {
 				slog := slog.With("fileName", filepath.Base(fileName))
 				slog.Error("Invalid file name", "error", err)
 				return err
 			}
 			// Initialize the release.
-			c.Releases[version.String()] = NewRelease(version).Init()
+			c.Releases[tfVersion.String()] = NewRelease(tfVersion).Init()
 			// Set cache most recent release.
 			if c.LastRelease != nil {
-				constraint, _ := semver.NewConstraint("> " + c.LastRelease.Version.String())
-				if !constraint.Check(version) {
+				constraint, _ := version.NewConstraint("> " + c.LastRelease.Version.String())
+				if !constraint.Check(tfVersion) {
 					continue
 				}
 			}
-			c.LastRelease = c.Releases[version.String()]
+			c.LastRelease = c.Releases[tfVersion.String()]
 		}
 	}
 
@@ -74,13 +74,13 @@ func (c *localCache) isEmpty() bool {
 
 // List command displays the contents of the local cache.
 func (c *localCache) List() error {
-	versions := make([]string, 0)
+	tfVersions := make([]string, 0)
 	for k := range c.Releases {
-		versions = append(versions, k)
+		tfVersions = append(tfVersions, k)
 	}
-	sort.Strings(versions)
+	sort.Strings(tfVersions)
 
-	for _, v := range versions {
+	for _, v := range tfVersions {
 		r := c.Releases[v]
 		if isatty.IsTerminal(os.Stderr.Fd()) {
 			if r.SameAs(c.ActiveRelease) {
@@ -155,7 +155,7 @@ func (c *localCache) Prune() error {
 }
 
 // PruneUntil command removes all Terraform binary versions prior to the one specified.
-func (c *localCache) PruneUntil(v *semver.Version) error {
+func (c *localCache) PruneUntil(v *version.Version) error {
 	var (
 		removed   int
 		reclaimed uint64
@@ -163,7 +163,7 @@ func (c *localCache) PruneUntil(v *semver.Version) error {
 
 	// Ignoring potential errors here because we have already
 	// checked that the argument is a valid semantic version.
-	constraint, _ := semver.NewConstraint("< " + v.String())
+	constraint, _ := version.NewConstraint("< " + v.String())
 
 	for _, release := range c.Releases {
 		if constraint.Check(release.Version) {
@@ -207,13 +207,13 @@ func (c *localCache) AutoClean() {
 	// Maximal number of releases to keep in the cache.
 	if viper.GetInt("cache_minor_version_nb") != 0 && viper.GetInt("cache_patch_version_nb") != 0 {
 		// Create list of patches per minor release.
-		minorReleases := make(map[string][]*semver.Version)
+		minorReleases := make(map[string][]*version.Version)
 		for _, r := range c.Releases {
-			v, _ := semver.NewVersion(fmt.Sprintf("%d.%d", r.Version.Major(), r.Version.Minor()))
+			v, _ := version.NewVersion(fmt.Sprintf("%d.%d", r.Version.Segments()[0], r.Version.Segments()[1]))
 			minorReleases[v.String()] = append(minorReleases[v.String()], r.Version)
 		}
 		for _, releases := range minorReleases {
-			sort.Sort(semver.Collection(releases))
+			sort.Sort(version.Collection(releases))
 		}
 		// Honoring the 'cache_minor_version_nb' configuration attribute.
 		keys := make([]string, 0)
@@ -223,30 +223,30 @@ func (c *localCache) AutoClean() {
 		sort.Strings(keys)
 		n := len(keys) - viper.GetInt("cache_minor_version_nb")
 		if n > 0 {
-			toBeRemoved := keys[0:n]
-			for _, version := range toBeRemoved {
-				// ~1.2.3 is equivalent to >= 1.2.3, < 1.3.0
-				constraint, _ := semver.NewConstraint("~" + version)
-				// Remove file(s) from disk.
-				for _, release := range c.Releases {
-					if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
-						// Try to remove the file silently.
-						release.Remove()
+			for _, key := range keys[0:n] {
+				for _, tfVersion := range minorReleases[key] {
+					constraint, _ := version.NewConstraint(tfVersion.String())
+					// Remove file(s) from disk.
+					for _, release := range c.Releases {
+						if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
+							// Try to remove the file silently.
+							slog.Info("Removed " + fmt.Sprint(release.Version.String()))
+							release.Remove()
+						}
 					}
 				}
 				// Delete releases from the map.
-				delete(minorReleases, version)
+				delete(minorReleases, key)
 			}
 		}
 		// Honoring the 'cache_patch_version_nb' configuration attribute.
 		for _, values := range minorReleases {
-			sort.Sort(semver.Collection(values))
+			sort.Sort(version.Collection(values))
 			n := len(values) - viper.GetInt("cache_patch_version_nb")
 			if n > 0 {
-				toBeRemoved := values[0:n]
-				for _, version := range toBeRemoved {
-					if !c.Releases[version.String()].SameAs(c.CurrentRelease) {
-						c.Releases[version.String()].Remove()
+				for _, tfVersion := range values[0:n] {
+					if !c.Releases[tfVersion.String()].SameAs(c.CurrentRelease) {
+						c.Releases[tfVersion.String()].Remove()
 					}
 				}
 			}
@@ -264,10 +264,9 @@ func (c *localCache) AutoClean() {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
-		toBeRemoved := keys[0:n]
-		for _, version := range toBeRemoved {
-			if !c.Releases[version].SameAs(c.CurrentRelease) {
-				c.Releases[version].Remove()
+		for _, tfVersion := range keys[0:n] {
+			if !c.Releases[tfVersion].SameAs(c.CurrentRelease) {
+				c.Releases[tfVersion].Remove()
 			}
 		}
 	}

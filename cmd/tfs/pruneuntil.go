@@ -3,7 +3,7 @@ package tfs
 import (
 	"log/slog"
 
-	"github.com/Masterminds/semver"
+	"github.com/hashicorp/go-version"
 	"github.com/spf13/cobra"
 	"github.com/yannlambret/tfs/pkg/tfs"
 )
@@ -19,7 +19,7 @@ var pruneuntilCmd = &cobra.Command{
 			return err
 		}
 		// Custom validation logic.
-		if _, err := semver.NewVersion(args[0]); err != nil {
+		if _, err := version.NewVersion(args[0]); err != nil {
 			slog.Error("Command argument should be a valid Terraform version")
 			return err
 		}
@@ -30,7 +30,7 @@ var pruneuntilCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Ignoring potential errors here because we have already
 		// checked that the argument is a valid semantic version.
-		v, _ := semver.NewVersion(args[0])
+		v, _ := version.NewVersion(args[0])
 
 		// Load local cache.
 		if err := tfs.Cache.Load(); err != nil {
