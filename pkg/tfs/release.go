@@ -1,15 +1,17 @@
 package tfs
 
 import (
-	"fmt"
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 
-	"github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-version"
+	install "github.com/hashicorp/hc-install"
+	"github.com/hashicorp/hc-install/product"
+	"github.com/hashicorp/hc-install/releases"
+	"github.com/hashicorp/hc-install/src"
 	"github.com/spf13/viper"
 )
 
@@ -17,10 +19,6 @@ type release struct {
 	Version        *version.Version
 	CacheDirectory string
 	FileName       string
-	URLPrefix      string
-	BinaryURL      string
-	ChecksumURL    string
-	URL            string
 }
 
 func NewRelease(v *version.Version) *release {
@@ -40,18 +38,6 @@ func (r *release) Init() *release {
 	// The local name of the Terraform binary.
 	r.FileName = viper.GetString("terraform_file_name_prefix") + r.Version.String()
 
-	// Terraform download URL prefix.
-	r.URLPrefix = fmt.Sprintf("%s/terraform/%s/terraform_%s", viper.GetString("terraform_download_url"), r.Version.String(), r.Version.String())
-
-	// Terraform binary download URL.
-	r.BinaryURL = fmt.Sprintf("%s_%s_%s.zip", r.URLPrefix, runtime.GOOS, runtime.GOARCH)
-
-	// Terraform checksum file download URL.
-	r.ChecksumURL = fmt.Sprintf("%s_SHA256SUMS", r.URLPrefix)
-
-	// Full download URL.
-	r.URL = fmt.Sprintf("%s?checksum=file:%s", r.BinaryURL, r.ChecksumURL)
-
 	// Already installed and active?
 	if target == filepath.Join(r.CacheDirectory, r.FileName) {
 		Cache.ActiveRelease = r
@@ -67,17 +53,37 @@ func (r *release) Install() error {
 		"version", r.Version.String(),
 		"cacheDirectory", r.CacheDirectory,
 		"fileName", r.FileName,
-		"binaryURL", r.BinaryURL,
 	)
 
 	// Check if the desired Terraform binary is already
 	// installed, download it otherwise.
-	target := filepath.Join(r.CacheDirectory, r.FileName)
+	targetPath := filepath.Join(r.CacheDirectory, r.FileName)
 
-	if _, err := os.Stat(target); os.IsNotExist(err) {
+	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+		ctx := context.Background()
+		i := install.NewInstaller()
+
 		slog.Info("Downloading Terraform")
-		if err := getter.GetFile(target, r.URL); err != nil {
+
+		srcPath, err := i.Install(ctx, []src.Installable{
+			&releases.ExactVersion{
+				Product: product.Terraform,
+				Version: r.Version,
+			},
+		})
+		if err != nil {
 			slog.Error("Download failed", "error", err)
+			return err
+		}
+		// Move downloaded file.
+		b, err := os.ReadFile(srcPath)
+		if err != nil {
+			slog.Error("Unable to read downloaded file", "error", err, "srcPath", srcPath)
+			return err
+		}
+		err = os.WriteFile(targetPath, b, os.ModePerm)
+		if err != nil {
+			slog.Error("Unable to move downloaded file to cache", "error", err, "targetPath", targetPath)
 			return err
 		}
 	}
@@ -156,7 +162,6 @@ func (r *release) Remove() error {
 
 	// Check if we should also remove the symbolic link.
 	if path, _ := filepath.EvalSymlinks(symlink); path == target {
-		slog.Info(path)
 		os.Remove(symlink)
 	}
 

@@ -29,9 +29,9 @@ version constrainst:
 $ tfs
 ```
 
-When downloading a Terraform binary, an SHA256 checksum of the file is
-automatically performed based on the information given by HashiCorp
-(releases are by default fetched from https://releases.hashicorp.com).
+`tfs` now uses HashiCorp `hc-install` library to automatically download and
+install Terraform. This means it is no longer possible to download files from
+an alternative website.
 
 If there is no specific constrainst, `tfs` will activate the most recent
 Terraform version that has been downloaded so far.
@@ -75,11 +75,6 @@ By default, the configuration file PATH will be equivalent to
 Here is a configuration template with the supported values:
 
 ```yaml
-# -- Download URL
-
-# Change this if you need to download release files from a specific location.
-#terraform_download_url: "https://releases.hashicorp.com" # default value
-
 # -- Cache management
 
 # Cache directory for Terraform release files.

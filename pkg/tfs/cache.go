@@ -55,7 +55,7 @@ func (c *localCache) Load() error {
 			c.Releases[tfVersion.String()] = NewRelease(tfVersion).Init()
 			// Set cache most recent release.
 			if c.LastRelease != nil {
-				constraint, _ := version.NewConstraint("> " + c.LastRelease.Version.String())
+				constraint, _ := version.NewConstraint(">" + c.LastRelease.Version.String())
 				if !constraint.Check(tfVersion) {
 					continue
 				}
@@ -163,7 +163,7 @@ func (c *localCache) PruneUntil(v *version.Version) error {
 
 	// Ignoring potential errors here because we have already
 	// checked that the argument is a valid semantic version.
-	constraint, _ := version.NewConstraint("< " + v.String())
+	constraint, _ := version.NewConstraint("<" + v.String())
 
 	for _, release := range c.Releases {
 		if constraint.Check(release.Version) {
@@ -230,7 +230,6 @@ func (c *localCache) AutoClean() {
 					for _, release := range c.Releases {
 						if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
 							// Try to remove the file silently.
-							slog.Info("Removed " + fmt.Sprint(release.Version.String()))
 							release.Remove()
 						}
 					}
