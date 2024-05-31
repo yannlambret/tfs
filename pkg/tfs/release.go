@@ -62,6 +62,7 @@ func (r *release) Install() error {
 	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
 		ctx := context.Background()
 		i := install.NewInstaller()
+		defer i.Remove(ctx)
 
 		slog.Info("Downloading Terraform")
 
