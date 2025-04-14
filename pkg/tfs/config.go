@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const tfsVersion = "v1.1.1"
+const tfsVersion = "v1.2.0"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
@@ -95,7 +95,4 @@ func InitConfig() {
 			slog.Info("Configuration loaded")
 		}
 	}
-
-	// Set cache directory once and for all.
-	Cache.Directory = viper.GetString("cache_directory")
 }

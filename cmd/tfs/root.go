@@ -1,3 +1,4 @@
+
 package tfs
 
 import (
@@ -18,12 +19,11 @@ var (
 	quiet bool
 
 	rootCmd = &cobra.Command{
-		Use:           `tfs`,
-		Short:         `Automatically fetch and configure the required version of the Terraform binary`,
-		Example:       `cd <path> && tfs`,
+		Use:           "tfs",
+		Short:         "Automatically fetch and configure the required version of the Terraform binary",
+		Example:       "cd <path> && tfs",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return nil
@@ -37,51 +37,6 @@ var (
 				slog.Error("Command argument should be a valid Terraform version")
 				return err
 			}
-
-			return nil
-		},
-
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var (
-				v   *version.Version
-				err error
-			)
-
-			// Load local cache.
-			if err := tfs.Cache.Load(); err != nil {
-				return err
-			}
-
-			// The user wants to run a specific Terraform version.
-			if len(args) != 0 {
-				// Ignoring potential errors here because we have already
-				// checked that the argument is a valid semantic version.
-				v, _ = version.NewVersion(args[0])
-			} else {
-				// Terraform configuratin parsing. If a specific version
-				// is defined in the 'terraform' block, we will try to use it.
-				v, err = tfs.GetTfVersion()
-			}
-
-			if err != nil {
-				return err
-			}
-
-			if v != nil {
-				// Create and activate a release for the target semantic version.
-				release := tfs.NewRelease(v).Init()
-
-				if err := release.Install(); err != nil {
-					return err
-				}
-				if err := release.Activate(); err != nil {
-					return err
-				}
-				// Remove extra releases in order to keep
-				// a reasonable cache size.
-				tfs.Cache.AutoClean()
-			}
-
 			return nil
 		},
 	}
@@ -91,12 +46,81 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", true, "Reduce logging verbosity")
 	viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 
+	// Make sure configuration is initialized.
+	tfs.InitConfig()
+
+	// Retrieve the cache directory from configuration.
+	cacheDir := viper.GetString("cache_directory")
+
+	// Create a new cache instance.
+	cache := tfs.NewLocalCache(cacheDir)
+
+	// Add subcommands, injecting the cache instance when required.
+	rootCmd.AddCommand(NewListCommand(cache))
+	rootCmd.AddCommand(NewPruneCommand(cache))
+	rootCmd.AddCommand(NewPruneUntilCommand(cache))
+	rootCmd.AddCommand(NewVersionCommand())
+
+	// Set the root command’s RunE function to use the cache.
+	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		var (
+			v   *version.Version
+			err error
+		)
+
+		// Load the cache contents.
+		if err := cache.Load(); err != nil {
+			return err
+		}
+
+		// Determine the target Terraform version.
+		if len(args) != 0 {
+			// We already validated that the argument is a valid semantic version.
+			v, _ = version.NewVersion(args[0])
+		} else {
+			// If no argument is provided, try to get the version from configuration.
+			if v, err = tfs.GetTfVersion(); err != nil {
+				return err
+			}
+		}
+
+		if v != nil {
+			// Create a new release in the cache.
+			release := cache.NewRelease(v)
+
+			if err := release.Install(); err != nil {
+				return err
+			}
+			if err := release.Activate(); err != nil {
+				return err
+			}
+			// Clean up extra releases.
+			cache.AutoClean()
+		} else {
+			slog.Info("Did not find any version constraint in Terraform configuration")
+			if !cache.IsEmpty() {
+				// Use the most recent version of Terraform.
+				if err := cache.LastRelease.Activate(); err != nil {
+					return err
+				}
+			} else {
+				slog.Info("Did not find any Terraform binary")
+			}
+		}
+
+		return nil
+	}
+
+	// Execute the command.
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
 func init() {
+	cobra.OnInitialize(tfs.InitConfig)
+
+	// Logger initialization.
 	var handler slog.Handler
 
 	LogLevel := new(slog.LevelVar)
@@ -115,6 +139,6 @@ func init() {
 		})
 	}
 
-	// Set global logger with custom options.
+	// Set the global logger with custom options.
 	slog.SetDefault(slog.New(handler))
 }
