@@ -13,77 +13,97 @@ import (
 	"github.com/spf13/viper"
 )
 
-type localCache struct {
-	Directory      string
-	Releases       map[string]*release
-	LastRelease    *release
-	CurrentRelease *release
-	ActiveRelease  *release
+// LocalCache holds information about downloaded Terraform releases.
+type LocalCache struct {
+	directory      string
+	releases       map[string]*release
+	activeRelease  *release
+	currentRelease *release
+	LastRelease    *release // public
 }
 
-// Disk location where Terraform binaries are kept.
-var Cache *localCache
+// NewLocalCache creates the LocalCache with the given directory.
+func NewLocalCache(directory string) *LocalCache {
+	return &LocalCache{
+		directory: directory,
+		releases:  make(map[string]*release),
+	}
+}
 
-func init() {
-	Cache = new(localCache)
+// NewRelease creates a new cached release.
+func (c *LocalCache) NewRelease(v *version.Version) *release {
+	r := &release{
+		Version:     v, // public
+		fileName:    viper.GetString("terraform_file_name_prefix") + v.String(),
+		parentCache: c,
+	}
+
+	// Check if this release is the active one.
+	userBinDir := viper.GetString("user_bin_directory")
+	symlink := filepath.Join(userBinDir, "terraform")
+
+	if target, _ := filepath.EvalSymlinks(symlink); target == filepath.Join(c.directory, r.fileName) {
+		c.activeRelease = r
+	}
+
+	return r
 }
 
 // Load builds the cache state based on the Terraform versions
 // that have already been downloaded in the cache directory.
-func (c *localCache) Load() error {
-	slog := slog.With(slog.String("cacheDirectory", c.Directory))
+func (c *LocalCache) Load() error {
+	slog := slog.With(slog.String("cacheDirectory", c.directory))
 
-	c.Releases = make(map[string]*release)
+	c.releases = make(map[string]*release)
 	c.LastRelease = nil
 
 	// Cache state.
-	files, err := filepath.Glob(filepath.Join(c.Directory, viper.GetString("terraform_file_name_prefix")+"*"))
+	files, err := filepath.Glob(filepath.Join(c.directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
 		slog.Error("Failed to load cache data", "error", err)
 		return err
 	}
 
-	if len(files) > 0 {
-		for _, fileName := range files {
-			v, err := versionFromFileName(filepath.Base(fileName))
-			if err != nil {
-				slog := slog.With("fileName", filepath.Base(fileName))
-				slog.Error("Invalid file name", "error", err)
-				return err
-			}
-			// Initialize the release.
-			c.Releases[v.String()] = NewRelease(v).Init()
-			// Set cache most recent release.
-			if c.LastRelease != nil {
-				constraint, _ := version.NewConstraint(">" + c.LastRelease.Version.String())
-				if !constraint.Check(v) {
-					continue
-				}
-			}
-			c.LastRelease = c.Releases[v.String()]
+	for _, fileName := range files {
+		v, err := versionFromFileName(filepath.Base(fileName))
+		if err != nil {
+			slog := slog.With("fileName", filepath.Base(fileName))
+			slog.Error("Invalid file name", "error", err)
+			return err
 		}
+		r := c.NewRelease(v)
+		c.releases[v.String()] = r
+
+		// Update last release based on version order.
+		if c.LastRelease != nil {
+			constraint, _ := version.NewConstraint(">" + c.LastRelease.Version.String())
+			if !constraint.Check(v) {
+				continue
+			}
+		}
+		c.LastRelease = r
 	}
 
 	return nil
 }
 
-// isEmpty allows to check if the cache is empty.
-func (c *localCache) isEmpty() bool {
-	return len(c.Releases) == 0
+// IsEmpty allows to check if the cache is empty.
+func (c *LocalCache) IsEmpty() bool {
+	return len(c.releases) == 0
 }
 
 // List command displays the contents of the local cache.
-func (c *localCache) List() error {
-	versions := make([]*version.Version, 0, len(c.Releases))
-	for _, r := range c.Releases {
+func (c *LocalCache) List() error {
+	versions := make([]*version.Version, 0, len(c.releases))
+	for _, r := range c.releases {
 		versions = append(versions, r.Version)
 	}
 	sort.Sort(version.Collection(versions))
 
 	for _, v := range versions {
-		r := c.Releases[v.String()]
+		r := c.releases[v.String()]
 		if isatty.IsTerminal(os.Stderr.Fd()) {
-			if r.SameAs(c.ActiveRelease) {
+			if r.SameAs(c.activeRelease) {
 				color.New(color.FgHiCyan, color.Bold).Println(v.String() + " (active)")
 			} else {
 				fmt.Println(v.String())
@@ -91,7 +111,7 @@ func (c *localCache) List() error {
 		} else {
 			slog.Info("release",
 				slog.String("version", v.String()),
-				slog.Bool("isActive", r.SameAs(c.ActiveRelease)),
+				slog.Bool("isActive", r.SameAs(c.activeRelease)),
 			)
 		}
 	}
@@ -100,15 +120,15 @@ func (c *localCache) List() error {
 }
 
 // Size returns the cache total size.
-func (c *localCache) Size() (uint64, error) {
+func (c *LocalCache) Size() (uint64, error) {
 	var size uint64
 
 	// Reload cache contents.
 	c.Load()
 
-	slog := slog.With(slog.String("cacheDirectory", c.Directory))
+	slog := slog.With(slog.String("cacheDirectory", c.directory))
 
-	for _, release := range c.Releases {
+	for _, release := range c.releases {
 		releaseSize, err := release.Size()
 		if err != nil {
 			slog.Error("Failed to get cache size", "error", err)
@@ -121,13 +141,13 @@ func (c *localCache) Size() (uint64, error) {
 }
 
 // Prune command can be used to wipe the whole cache.
-func (c *localCache) Prune() error {
+func (c *LocalCache) Prune() error {
 	var (
 		removed   int
 		reclaimed uint64
 	)
 
-	for _, release := range c.Releases {
+	for _, release := range c.releases {
 		releaseSize, err := release.Size()
 		if err != nil {
 			return err
@@ -146,7 +166,7 @@ func (c *localCache) Prune() error {
 
 	slog.Info(
 		"Removed "+fmt.Sprintf("%d", removed)+" file(s)",
-		"cacheDirectory", c.Directory,
+		"cacheDirectory", c.directory,
 		"cacheSize", formatSize(cacheSize),
 		"reclaimedSpace", formatSize(reclaimed),
 		"removed", removed,
@@ -156,7 +176,7 @@ func (c *localCache) Prune() error {
 }
 
 // PruneUntil command removes all Terraform binary versions prior to the one specified.
-func (c *localCache) PruneUntil(v *version.Version) error {
+func (c *LocalCache) PruneUntil(v *version.Version) error {
 	var (
 		removed   int
 		reclaimed uint64
@@ -166,7 +186,7 @@ func (c *localCache) PruneUntil(v *version.Version) error {
 	// checked that the argument is a valid semantic version.
 	constraint, _ := version.NewConstraint("<" + v.String())
 
-	for _, release := range c.Releases {
+	for _, release := range c.releases {
 		if constraint.Check(release.Version) {
 			releaseSize, err := release.Size()
 			if err != nil {
@@ -187,7 +207,7 @@ func (c *localCache) PruneUntil(v *version.Version) error {
 
 	slog.Info(
 		"Removed "+fmt.Sprintf("%d", removed)+" file(s)",
-		"cacheDirectory", c.Directory,
+		"cacheDirectory", c.directory,
 		"cacheSize", formatSize(cacheSize),
 		"reclaimedSpace", formatSize(reclaimed),
 		"removed", removed,
@@ -196,7 +216,7 @@ func (c *localCache) PruneUntil(v *version.Version) error {
 	return nil
 }
 
-func (c *localCache) AutoClean() {
+func (c *LocalCache) AutoClean() {
 	// Reload cache contents.
 	c.Load()
 
@@ -214,7 +234,7 @@ func (c *localCache) AutoClean() {
 		minorReleases := make(map[string][]*version.Version)
 		minorKeysSet := make(map[string]struct{})
 
-		for _, r := range c.Releases {
+		for _, r := range c.releases {
 			segments := r.Version.Segments()
 			minorKey := fmt.Sprintf("%d.%d", segments[0], segments[1])
 			minorReleases[minorKey] = append(minorReleases[minorKey], r.Version)
@@ -238,19 +258,20 @@ func (c *localCache) AutoClean() {
 		if n := len(minorKeys) - viper.GetInt("cache_minor_version_nb"); n > 0 {
 			for _, v := range minorKeys[:n] {
 				constraint, _ := version.NewConstraint(fmt.Sprintf("~>%s", v.String()))
-				for _, release := range c.Releases {
-					if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
+				for _, release := range c.releases {
+					if constraint.Check(release.Version) && !release.SameAs(c.currentRelease) {
 						release.Remove()
 					}
 				}
 				delete(minorReleases, v.String())
 			}
 		}
+
 		// Drop the oldest patch releases if needed.
 		for _, versions := range minorReleases {
 			if n := len(versions) - viper.GetInt("cache_patch_version_nb"); n > 0 {
 				for _, v := range versions[:n] {
-					if r, ok := c.Releases[v.String()]; ok && !r.SameAs(c.CurrentRelease) {
+					if r, ok := c.releases[v.String()]; ok && !r.SameAs(c.currentRelease) {
 						r.Remove()
 					}
 				}
@@ -263,14 +284,14 @@ func (c *localCache) AutoClean() {
 	// Default caching mode.
 	cacheHistory := viper.GetInt("cache_history")
 
-	if n := len(c.Releases) - cacheHistory; n > 0 {
-		versions := make([]*version.Version, 0, len(c.Releases))
-		for _, r := range c.Releases {
+	if n := len(c.releases) - cacheHistory; n > 0 {
+		versions := make([]*version.Version, 0, len(c.releases))
+		for _, r := range c.releases {
 			versions = append(versions, r.Version)
 		}
 		sort.Sort(version.Collection(versions))
 		for _, v := range versions[:n] {
-			if r, ok := c.Releases[v.String()]; ok && !r.SameAs(c.CurrentRelease) {
+			if r, ok := c.releases[v.String()]; ok && !r.SameAs(c.currentRelease) {
 				r.Remove()
 			}
 		}

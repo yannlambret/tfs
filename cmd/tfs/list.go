@@ -1,3 +1,4 @@
+
 package tfs
 
 import (
@@ -5,21 +6,21 @@ import (
 	"github.com/yannlambret/tfs/pkg/tfs"
 )
 
-var listCmd = &cobra.Command{
-	Use:     "list",
-	Short:   "List Terraform cached versions",
-	Aliases: []string{"ls"},
+// NewListCommand returns a new cobra.Command for the "list" subcommand.
+// It receives the cache instance that will be used by the command.
+func NewListCommand(cache *tfs.LocalCache) *cobra.Command {
+	return &cobra.Command{
+		Use:     "list",
+		Short:   "List Terraform cached versions",
+		Aliases: []string{"ls"},
 
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Load local cache.
-		if err := tfs.Cache.Load(); err != nil {
-			return err
-		}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Load local cache.
+			if err := cache.Load(); err != nil {
+				return err
+			}
 
-		return tfs.Cache.List()
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(listCmd)
+			return cache.List()
+		},
+	}
 }

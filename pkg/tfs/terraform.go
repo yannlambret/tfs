@@ -36,15 +36,8 @@ func GetTfVersion() (*version.Version, error) {
 	if len(module.RequiredCore) != 0 {
 		tfVersion = module.RequiredCore[0]
 	} else {
-		// No version defined in Terrafom configuration,
-		// so we activate the most recent available release.
-		slog.Info("Did not find any version constrainst in Terraform configuration")
-		if !Cache.isEmpty() {
-			return Cache.LastRelease.Version, nil
-		} else {
-			slog.Info("Did not find any Terraform binary")
-			return nil, nil
-		}
+		// No version defined in Terrafom configuration.
+		return nil, nil
 	}
 
 	slog = slog.With(
