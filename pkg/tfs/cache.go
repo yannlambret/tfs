@@ -45,22 +45,22 @@ func (c *localCache) Load() error {
 
 	if len(files) > 0 {
 		for _, fileName := range files {
-			tfVersion, err := versionFromFileName(filepath.Base(fileName))
+			v, err := versionFromFileName(filepath.Base(fileName))
 			if err != nil {
 				slog := slog.With("fileName", filepath.Base(fileName))
 				slog.Error("Invalid file name", "error", err)
 				return err
 			}
 			// Initialize the release.
-			c.Releases[tfVersion.String()] = NewRelease(tfVersion).Init()
+			c.Releases[v.String()] = NewRelease(v).Init()
 			// Set cache most recent release.
 			if c.LastRelease != nil {
 				constraint, _ := version.NewConstraint(">" + c.LastRelease.Version.String())
-				if !constraint.Check(tfVersion) {
+				if !constraint.Check(v) {
 					continue
 				}
 			}
-			c.LastRelease = c.Releases[tfVersion.String()]
+			c.LastRelease = c.Releases[v.String()]
 		}
 	}
 
@@ -74,27 +74,28 @@ func (c *localCache) isEmpty() bool {
 
 // List command displays the contents of the local cache.
 func (c *localCache) List() error {
-	tfVersions := make([]string, 0)
-	for k := range c.Releases {
-		tfVersions = append(tfVersions, k)
+	versions := make([]*version.Version, 0, len(c.Releases))
+	for _, r := range c.Releases {
+		versions = append(versions, r.Version)
 	}
-	sort.Strings(tfVersions)
+	sort.Sort(version.Collection(versions))
 
-	for _, v := range tfVersions {
-		r := c.Releases[v]
+	for _, v := range versions {
+		r := c.Releases[v.String()]
 		if isatty.IsTerminal(os.Stderr.Fd()) {
 			if r.SameAs(c.ActiveRelease) {
-				color.New(color.FgHiCyan, color.Bold).Println(v + " (active)")
+				color.New(color.FgHiCyan, color.Bold).Println(v.String() + " (active)")
 			} else {
-				fmt.Println(v)
+				fmt.Println(v.String())
 			}
 		} else {
 			slog.Info("release",
-				slog.String("version", v),
+				slog.String("version", v.String()),
 				slog.Bool("isActive", r.SameAs(c.ActiveRelease)),
 			)
 		}
 	}
+
 	return nil
 }
 
@@ -200,72 +201,77 @@ func (c *localCache) AutoClean() {
 	c.Load()
 
 	if !viper.GetBool("cache_auto_clean") {
-		// Feature disabled by the configuration.
+		// Feature disabled.
 		return
 	}
 
-	// Maximal number of releases to keep in the cache.
-	if viper.GetInt("cache_minor_version_nb") != 0 && viper.GetInt("cache_patch_version_nb") != 0 {
-		// Create list of patches per minor release.
+	minorLimit := viper.GetInt("cache_minor_version_nb")
+	patchLimit := viper.GetInt("cache_patch_version_nb")
+
+	/// Keep N minor versions and M patches per minor version.
+	if minorLimit > 0 && patchLimit > 0 {
+		// Making groups for each minor version.
 		minorReleases := make(map[string][]*version.Version)
+		minorKeysSet := make(map[string]struct{})
+
 		for _, r := range c.Releases {
-			v, _ := version.NewVersion(fmt.Sprintf("%d.%d", r.Version.Segments()[0], r.Version.Segments()[1]))
-			minorReleases[v.String()] = append(minorReleases[v.String()], r.Version)
+			segments := r.Version.Segments()
+			minorKey := fmt.Sprintf("%d.%d", segments[0], segments[1])
+			minorReleases[minorKey] = append(minorReleases[minorKey], r.Version)
+			minorKeysSet[minorKey] = struct{}{}
 		}
+
+		// Sort patch versions in each group.
 		for _, releases := range minorReleases {
 			sort.Sort(version.Collection(releases))
 		}
-		// Honoring the 'cache_minor_version_nb' configuration attribute.
-		keys := make([]string, 0)
-		for k := range minorReleases {
-			keys = append(keys, k)
+
+		// Sort minor versions.
+		minorKeys := make([]*version.Version, 0, len(minorKeysSet))
+		for k := range minorKeysSet {
+			v, _ := version.NewVersion(k)
+			minorKeys = append(minorKeys, v)
 		}
-		sort.Strings(keys)
-		n := len(keys) - viper.GetInt("cache_minor_version_nb")
-		if n > 0 {
-			for _, key := range keys[0:n] {
-				for _, tfVersion := range minorReleases[key] {
-					constraint, _ := version.NewConstraint(tfVersion.String())
-					// Remove file(s) from disk.
-					for _, release := range c.Releases {
-						if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
-							// Try to remove the file silently.
-							release.Remove()
-						}
+		sort.Sort(version.Collection(minorKeys))
+
+		// Drop the oldest minor releases if needed.
+		if n := len(minorKeys) - viper.GetInt("cache_minor_version_nb"); n > 0 {
+			for _, v := range minorKeys[:n] {
+				constraint, _ := version.NewConstraint(fmt.Sprintf("~>%s", v.String()))
+				for _, release := range c.Releases {
+					if constraint.Check(release.Version) && !release.SameAs(c.CurrentRelease) {
+						release.Remove()
 					}
 				}
-				// Delete releases from the map.
-				delete(minorReleases, key)
+				delete(minorReleases, v.String())
 			}
 		}
-		// Honoring the 'cache_patch_version_nb' configuration attribute.
-		for _, values := range minorReleases {
-			sort.Sort(version.Collection(values))
-			n := len(values) - viper.GetInt("cache_patch_version_nb")
-			if n > 0 {
-				for _, tfVersion := range values[0:n] {
-					if !c.Releases[tfVersion.String()].SameAs(c.CurrentRelease) {
-						c.Releases[tfVersion.String()].Remove()
+		// Drop the oldest patch releases if needed.
+		for _, versions := range minorReleases {
+			if n := len(versions) - viper.GetInt("cache_patch_version_nb"); n > 0 {
+				for _, v := range versions[:n] {
+					if r, ok := c.Releases[v.String()]; ok && !r.SameAs(c.CurrentRelease) {
+						r.Remove()
 					}
 				}
 			}
 		}
+
 		return
 	}
 
 	// Default caching mode.
 	cacheHistory := viper.GetInt("cache_history")
 
-	n := len(c.Releases) - cacheHistory
-	if n > 0 {
-		keys := make([]string, 0)
-		for k := range c.Releases {
-			keys = append(keys, k)
+	if n := len(c.Releases) - cacheHistory; n > 0 {
+		versions := make([]*version.Version, 0, len(c.Releases))
+		for _, r := range c.Releases {
+			versions = append(versions, r.Version)
 		}
-		sort.Strings(keys)
-		for _, tfVersion := range keys[0:n] {
-			if !c.Releases[tfVersion].SameAs(c.CurrentRelease) {
-				c.Releases[tfVersion].Remove()
+		sort.Sort(version.Collection(versions))
+		for _, v := range versions[:n] {
+			if r, ok := c.Releases[v.String()]; ok && !r.SameAs(c.CurrentRelease) {
+				r.Remove()
 			}
 		}
 	}
