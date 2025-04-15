@@ -1,4 +1,3 @@
-
 package tfs
 
 import (
@@ -15,7 +14,7 @@ func NewPruneUntilCommand(cache *tfs.LocalCache) *cobra.Command {
 	return &cobra.Command{
 		Use:     "prune-until",
 		Short:   "Remove all Terraform binary versions prior to the one specified",
-		Example: `prune-until 1.3.0`,
+		Example: "prune-until 1.5.0",
 
 		Args: func(cmd *cobra.Command, args []string) error {
 			if err := cobra.ExactArgs(1)(cmd, args); err != nil {

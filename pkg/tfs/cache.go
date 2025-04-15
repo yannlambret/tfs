@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/go-version"
 	"github.com/mattn/go-isatty"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
 
@@ -42,7 +43,7 @@ func (c *LocalCache) NewRelease(v *version.Version) *release {
 	userBinDir := viper.GetString("user_bin_directory")
 	symlink := filepath.Join(userBinDir, "terraform")
 
-	if target, _ := filepath.EvalSymlinks(symlink); target == filepath.Join(c.directory, r.fileName) {
+	if target, ok, _ := AppFs.EvalSymlinksIfPossible(symlink); ok && target == filepath.Join(c.directory, r.fileName) {
 		c.activeRelease = r
 	}
 
@@ -58,7 +59,7 @@ func (c *LocalCache) Load() error {
 	c.LastRelease = nil
 
 	// Cache state.
-	files, err := filepath.Glob(filepath.Join(c.directory, viper.GetString("terraform_file_name_prefix")+"*"))
+	files, err := afero.Glob(AppFs, filepath.Join(c.directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
 		slog.Error("Failed to load cache data", "error", err)
 		return err
