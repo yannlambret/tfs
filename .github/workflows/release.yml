@@ -29,6 +29,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            go.sum
 
       - name: Extract version from tag
         id: vars
@@ -40,7 +43,7 @@ jobs:
         run: |
           echo "filename=tfs-${{ steps.vars.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}" >> $GITHUB_OUTPUT
 
-      - name: Build binary
+      - name: Build binaries
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
@@ -53,9 +56,7 @@ jobs:
         run: |
           mkdir -p dist
           filename="${{ steps.name.outputs.filename }}"
-          # create tar.gz
           tar -czf "dist/${filename}.tar.gz" -C build tfs
-          # create zip
           zip -j "dist/${filename}.zip" build/tfs
 
       - name: Upload release assets
