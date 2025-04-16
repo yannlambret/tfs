@@ -2,7 +2,6 @@ name: release
 
 env:
   GO_VERSION: '1.23'
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 permissions:
   contents: write
@@ -21,7 +20,6 @@ jobs:
       matrix:
         goos: [linux, darwin]
         goarch: [amd64, arm64]
-        format: [tar.gz, zip]
 
     steps:
       - name: Checkout code
@@ -34,9 +32,10 @@ jobs:
 
       - name: Extract version from tag
         id: vars
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Set output file name
+      - name: Compute artifact name
         id: name
         run: |
           echo "filename=tfs-${{ steps.vars.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}" >> $GITHUB_OUTPUT
@@ -48,17 +47,17 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p build
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o build/tfs-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          go build -o build/tfs
 
-      - name: Archive binary
+      - name: Archive binaries
         run: |
           mkdir -p dist
-          if [[ "${{ matrix.format }}" == "zip" ]]; then
-            zip -j "dist/${{ steps.name.outputs.filename }}.zip" build/tfs
-          else
-            tar -czf "dist/${{ steps.name.outputs.filename }}.tar.gz" -C build tfs
-          fi
-        
+          filename="${{ steps.name.outputs.filename }}"
+          # create tar.gz
+          tar -czf "dist/${filename}.tar.gz" -C build tfs
+          # create zip
+          zip -j "dist/${filename}.zip" build/tfs
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
