@@ -14,13 +14,14 @@ It works out of the box on all GNU/Linux distributions and macOS.
 
 ---
 
-## Build
+## Build & Install
 
 ```bash
 git clone https://github.com/yannlambret/tfs.git && cd tfs
-go build -o dist/tfs
+go mod tidy
+go build -o build/tfs
 ```
-
+Alternatively, you can download a prebuilt binary for your platform from the [Releases page](https://github.com/yannlambret/tfs/releases). \
 Then place the resulting binary somewhere in your `PATH`.
 
 ---
