@@ -1,172 +1,195 @@
+![Go Test](https://github.com/yannlambret/tfs/actions/workflows/test.yml/badge.svg)
+[![Go Report](https://goreportcard.com/badge/github.com/yannlambret/tfs)](https://goreportcard.com/report/github.com/yannlambret/tfs)
+![GitHub go.mod Go Version](https://img.shields.io/github/go-mod/go-version/yannlambret/tfs)
+
+
 # tfs
 
-`tfs` is a command line tool that helps for using different version of Terraform
-on a daily basis. It has been inspired by [this project](https://github.com/warrensbox/terraform-switcher).
+`tfs` is a command-line tool that helps you manage multiple versions of Terraform efficiently.\
+It was inspired by [this project](https://github.com/warrensbox/terraform-switcher).
 
-`tfs` is simple and ligthweight, and rely on [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html)
-conventions.
+`tfs` is simple, lightweight, and follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html).
 
-It works out of the box for every GNU/Linux distribution and macOS.
+It works out of the box on all GNU/Linux distributions and macOS.
+
+---
 
 ## Build
 
-```text
+```bash
 git clone https://github.com/yannlambret/tfs.git && cd tfs
 go build -o dist/tfs
 ```
 
-Then put the resulting binary somewhere in your PATH.
+Then place the resulting binary somewhere in your `PATH`.
+
+---
 
 ## Usage
 
-Here are a few ways to use the tool (assuming the local folder contains some
-Terraform manifest files).
+Here are a few examples of how to use the tool (assuming the current directory contains some Terraform manifest files):
 
-* Downloading and using the right Terraform version while honoring a Terraform
-version constrainst:
+### 🔄 Automatically use the appropriate Terraform version
 
-```
-$ tfs
+```bash
+tfs
 ```
 
-`tfs` now uses HashiCorp `hc-install` library to automatically download and
-install Terraform. This means it is no longer possible to download files from
-an alternative website.
+Note: `tfs` now uses HashiCorp’s `hc-install` library to automatically download and install Terraform.\
+It is thus no longer possible to download Terraform from alternative sources.
 
-If there is no specific constrainst, `tfs` will activate the most recent
-Terraform version that has been downloaded so far.
+If no version constraint is detected, `tfs` will activate the most recently downloaded Terraform version.
 
-* Using a specific Terraform version:
+### 📌 Use a specific Terraform version
+If no Terraform version constraint is specified in the configuration, you can manually select
+the version to use:
 
-```
-$ tfs 1.3.2
-```
-
-* Listing cache contents:
-
-```
-$ tfs list
+```bash
+tfs 1.10.1
 ```
 
-* Cleaning up the cache:
+### 📂 List cached versions
 
-```
-$ tfs prune
-```
-
-* Cleaning up useless versions:
-
-```
-$ tfs prune-until 1.3.0
+```bash
+tfs list
 ```
 
-By default, Terraform binaries will be stored in `${XDG_CACHE_HOME}/tfs`, else in
-`${HOME}/.cache/tfs`.
+### 🧹 Clear the entire cache
 
-A symbolic link to the active Terraform binary is created in `${HOME}/.local/bin`,
-so this directory should be added to your PATH environment variable.
+```bash
+tfs prune
+```
+
+### 🗑️ Remove versions older than a specific one
+
+```bash
+tfs prune-until 1.8.0
+```
+
+---
+
+## Caching & Paths
+
+By default, Terraform binaries are stored in `${XDG_CACHE_HOME}/tfs`\
+If `XDG_CACHE_HOME` is not set, it defaults to `${HOME}/.cache/tfs`.
+
+A symbolic link to the active Terraform binary is created at `${HOME}/.local/bin/terraform`,\
+so make sure this directory is added to your `PATH`.
+
+---
 
 ## Configuration
 
-You can change the behavior of the tool by setting up a configuration file.
-By default, the configuration file PATH will be equivalent to
-`$XDG_CONFIG_HOME/tfs/config.yaml`, `$HOME/.config/tfs/config.yaml` otherwise.
+`tfs` supports a configuration file to customize behavior.\
+By default, the configuration file is located at:
 
-Here is a configuration template with the supported values:
+```
+$XDG_CONFIG_HOME/tfs/config.yaml
+```
+
+If `XDG_CONFIG_HOME` is not set, it falls back to:
+
+```
+$HOME/.config/tfs/config.yaml
+```
+
+### Configuration Template
 
 ```yaml
-# -- Cache management
+# -- Cache Management
 
-# Cache directory for Terraform release files.
-# Default value: "${XDG_CACHE_HOME}/tfs"
-# Fallback value: "${HOME}/.cache/tfs"
+# Custom path for the Terraform cache directory.
+# Default: "${XDG_CACHE_HOME}/tfs"
+# Fallback: "${HOME}/.cache/tfs"
 #cache_directory: <CUSTOM_PATH>
 
-# Keep a limited number of release files in the cache.
+# Enable automatic cache cleanup.
 cache_auto_clean: true # default value
 
-# Number of Terraform releases that you want to keep.
-# Most recent releases will be kept in the cache.
+# Maximum number of releases to keep in the cache (fallback mode).
 cache_history: 8 # default value
 
-# Slightly more sophisticated cache management.
-# Keep a specific number of Terraform releases
-# per minor version (as usual, most recent ones
-# will be kept).
-# So for instance, with the values defined below,
-# the cache could contain the folloging releases:
-#   * 1.3.6
-#   * 1.3.8
-#   * 1.4.5
-#   * 1.4.6
-#   * 1.5.0
-# When these two directives are commented out,
-# the option 'cache_history' is ignored.
+# Advanced cache management:
+# Keep a limited number of releases per minor version,
+# and a limited number of patch versions within each minor.
+#
+# For example, with the config below, you might keep:
+#   * 1.9.3
+#   * 1.9.5
+#   * 1.10.2
+#   * 1.10.3
+#   * 1.11.0
+#
+# When both values are defined, cache_history is ignored.
 #cache_minor_version_nb: 3
 #cache_patch_version_nb: 2
 ```
 
-Sometimes, an additional version can be kept in the cache, if you intend to use
-a release that should have been removed otherwise.
+---
 
-Consider this scenario (using the same configuration settings as above):
+## Advanced Cache Behavior
 
-```
-$ tfs prune # cache is now empty
+`tfs` tries to preserve the current version in use — even if it would otherwise be cleaned up.
+
+Consider this scenario (using the config above):
+
+```bash
+$ tfs prune  # The cache is now empty
+
+$ tfs 1.10.2
+$ tfs 1.10.3
 ```
 
-```
-$ tfs 1.5.2
-$ tfs 1.5.3
-```
+Now the cache contains:
 
-The cache now contains the following releases:
-
-```
+```bash
 $ tfs list
-1.5.2
-1.5.3 (active)
+1.10.2
+1.10.3 (active)
 ```
 
-Now let's download the 1.5.4 version:
+Let’s install one more version:
 
-```
-$ tfs 1.5.4
+```bash
+$ tfs 1.10.4
 ```
 
-As we should expect, the version 1.5.2 has been removed because we want to keep
-at most two patch versions:
+Since you want to keep at most two patch versions, `1.10.2` is removed:
 
-```
+```bash
 $ tfs list
-1.5.3
-1.5.4 (active)
+1.10.3
+1.10.4 (active)
 ```
 
-Now suppose that you need to work with Terraform 1.5.1:
+Now, suppose you need to work with `1.10.1`:
 
-```
-$ tfs 1.5.1
+```bash
+$ tfs 1.10.1
 ```
 
-In this specific scenario, the command should download the 1.5.1 binary and
-remove it immediately before exiting. Obviously, this is not what you want
-and this is not what happens:
+Even though `1.10.1` falls outside the patch retention window, `tfs` will **not** delete it immediately, because it’s now the **active** version.
 
-```
+```bash
 $ tfs list
-1.5.1 (active)
-1.5.3
-1.5.4
+1.10.1 (active)
+1.10.3
+1.10.4
 ```
 
-When downloading a Terraform release, `tfs` will flag it as active to prevent
-it from being removed, whatever the cache content may be. If you switch back
-later to Terraform 1.5.4, the 1.5.1 version will be removed as usual:
+But as soon as you switch again:
 
-```
-$ tfs 1.5.4
+```bash
+$ tfs 1.10.4
 $ tfs list
-1.5.3
-1.5.4 (active)
+1.10.3
+1.10.4 (active)
 ```
+
+Now `1.10.1` is cleaned up, as expected.
+
+---
+
+## License
+
+MIT © [Yann Lambret](https://github.com/yannlambret)
