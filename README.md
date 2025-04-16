@@ -1,7 +1,7 @@
-![Go Test](https://github.com/yannlambret/tfs/actions/workflows/test.yml/badge.svg)
-[![Go Report](https://goreportcard.com/badge/github.com/yannlambret/tfs)](https://goreportcard.com/report/github.com/yannlambret/tfs)
-![GitHub go.mod Go Version](https://img.shields.io/github/go-mod/go-version/yannlambret/tfs)
-
+![go test](https://github.com/yannlambret/tfs/actions/workflows/test.yml/badge.svg)
+[![go report](https://goreportcard.com/badge/github.com/yannlambret/tfs)](https://goreportcard.com/report/github.com/yannlambret/tfs)
+![go version](https://img.shields.io/github/go-mod/go-version/yannlambret/tfs?label=go%20version)
+[![release](https://img.shields.io/github/v/release/yannlambret/tfs?label=release)](https://github.com/yannlambret/tfs/releases)
 
 # tfs
 
