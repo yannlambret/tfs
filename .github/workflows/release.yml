@@ -29,9 +29,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: |
-            go.sum
+          cache: false
 
       - name: Extract version from tag
         id: vars
