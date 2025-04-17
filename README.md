@@ -235,6 +235,83 @@ Now `1.10.1` is cleaned up, as expected.
 
 ---
 
+## CI/CD
+
+`tfs` ships as a Docker image that can be used to automatically download and activate the right
+Terraform version during a build, based on the `required_version` constraint in your configuration.
+
+### Basic usage
+
+Mount your Terraform project as the working directory and pass Terraform subcommands directly:
+
+```bash
+docker run --rm \
+  -v $(pwd):/workspace \
+  -w /workspace \
+  tfs:1.4.3 sh -c "terraform init && terraform plan"
+```
+
+`tfs` reads the `required_version` constraint from the current directory, downloads the matching
+Terraform binary, and makes it available before executing the rest of the command.
+
+### Caching Terraform binaries between runs
+
+By default, downloaded binaries are stored inside the container at `/root/.cache/tfs` and are
+discarded when the container exits. If your CI platform supports volume caching, you can mount a
+host directory or a named volume to avoid re-downloading Terraform on every build:
+
+```bash
+docker run --rm \
+  -v $(pwd):/workspace \
+  -w /workspace \
+  -v /ci/cache/tfs:/root/.cache/tfs \
+  tfs:1.4.3 sh -c "terraform init && terraform plan"
+```
+
+Alternatively, the cache directory can be overridden via the `TFS_CACHE_DIRECTORY` environment
+variable — useful when the default path does not match your caching setup:
+
+```bash
+docker run --rm \
+  -v $(pwd):/workspace \
+  -w /workspace \
+  -e TFS_CACHE_DIRECTORY=/cache \
+  -v /ci/cache/tfs:/cache \
+  tfs:1.4.3 sh -c "terraform init && terraform plan"
+```
+
+> **Note on cache invalidation**: `tfs` names binaries after their version (`terraform_1.12.2`),
+> so a cached binary is reused as-is across builds. Cache entries are never stale.
+
+### Provider and backend credentials
+
+Depending on your Terraform configuration, you will likely need to inject credentials into the
+container. Common examples:
+
+```bash
+# GCP — service account key (preferred over user credentials in CI)
+-e GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/sa-key.json \
+-v /path/to/sa-key.json:/run/secrets/sa-key.json:ro
+
+# AWS — standard credential environment variables
+-e AWS_ACCESS_KEY_ID=... \
+-e AWS_SECRET_ACCESS_KEY=... \
+-e AWS_DEFAULT_REGION=...
+
+# GitHub — for modules sourced from private repositories
+-e GITHUB_TOKEN=...
+
+# Consul — for Consul-backed remote state
+-e CONSUL_HTTP_TOKEN=... \
+-e CONSUL_HTTP_ADDR=...
+```
+
+How credentials are provided depends on your CI/CD platform. Most platforms (GitHub Actions,
+GitLab CI, CircleCI…) offer native secret injection mechanisms that map directly to environment
+variables, so no files need to be mounted.
+
+---
+
 ## License
 
 MIT © [Yann Lambret](https://github.com/yannlambret)
