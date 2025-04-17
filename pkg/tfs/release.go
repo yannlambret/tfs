@@ -34,6 +34,12 @@ func (r *release) Install() error {
 	// installed, download it otherwise.
 	targetPath := filepath.Join(r.parentCache.directory, r.fileName)
 
+	// Ensure parent cache directory exists.
+	if err := AppFs.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
+		slog.Error("Failed to create cache directory", "error", err)
+		return err
+	}
+
 	if _, err := AppFs.Stat(targetPath); os.IsNotExist(err) {
 		ctx := context.Background()
 		i := install.NewInstaller()
