@@ -57,5 +57,7 @@ func initTestFS(tb testing.TB) (string, func()) {
 		tb.Fatalf("Failed to create bin dir: %v", err)
 	}
 
-	return tempDir, func() {}
+	return tempDir, func() {
+		viper.Reset()	
+	}
 }
