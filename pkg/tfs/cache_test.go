@@ -107,7 +107,7 @@ func TestCachePruneUntil(t *testing.T) {
 		t.Fatalf("Cache.Load() failed: %v", err)
 	}
 
-	// Prune until version 1.10.0
+	// Prune until version 1.10.0.
 	v110, _ := version.NewVersion("1.10.0")
 
 	if err := cache.PruneUntil(v110); err != nil {
@@ -172,7 +172,7 @@ func TestCacheAutoClean_MinorVersionLimit(t *testing.T) {
 
 	cache.AutoClean()
 
-	// Should keep only two most recent minor versions (1.9 and 1.10)
+	// Should keep only two most recent minor versions (1.9 and 1.10).
 	shouldRemain := []string{"1.9.2", "1.9.8", "1.10.1", "1.10.2"}
 	shouldBeRemoved := []string{"1.6.5", "1.6.6", "1.8.1"}
 
@@ -214,7 +214,7 @@ func TestCacheAutoClean_PatchVersionLimit(t *testing.T) {
 
 	cache.AutoClean()
 
-	// Should keep only the two latest 1.10.x releases
+	// Should keep only the two latest 1.10.x releases.
 	shouldRemain := []string{"1.10.3", "1.10.4"}
 	shouldBeRemoved := []string{"1.10.0", "1.10.1", "1.10.2"}
 
