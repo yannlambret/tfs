@@ -22,7 +22,7 @@ func (a *AferoFs) LstatIfPossible(name string) (os.FileInfo, bool, error) {
 }
 
 func (a *AferoFs) SymlinkIfPossible(target, symlink string) error {
-	// Ensure the parent directory for the symlink exists
+	// Ensure the parent directory for the symlink exists.
 	if err := os.MkdirAll(filepath.Dir(symlink), 0755); err != nil {
 		return err
 	}
@@ -45,14 +45,14 @@ func initTestFS(tb testing.TB) (string, func()) {
 	tb.Helper()
 	tempDir := tb.TempDir()
 
-	// Create a real OS-based filesystem using a temp directory
+	// Create a real OS-based filesystem using a temp directory.
 	AppFs = &AferoFs{Fs: afero.NewBasePathFs(afero.NewOsFs(), tempDir)}
 
-	// Set required Viper config values
+	// Set required Viper config values.
 	viper.Set("terraform_file_name_prefix", "terraform_")
 	viper.Set("user_bin_directory", filepath.Join(tempDir, "bin"))
 
-	// Ensure directories exist
+	// Ensure directories exist.
 	if err := AppFs.MkdirAll(viper.GetString("user_bin_directory"), 0755); err != nil {
 		tb.Fatalf("Failed to create bin dir: %v", err)
 	}
