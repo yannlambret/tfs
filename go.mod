@@ -9,7 +9,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230201191712-8cad743c8c26
-	github.com/lmittmann/tint v1.0.7
+	github.com/lmittmann/tint v1.1.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -40,7 +40,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
-	github.com/spf13/afero v1.12.0 // indirect
+	github.com/spf13/afero v1.12.0
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
