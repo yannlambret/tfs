@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
-	github.com/hashicorp/go-version v1.7.0
+	github.com/hashicorp/go-version v1.8.0
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230201191712-8cad743c8c26
 	github.com/lmittmann/tint v1.1.2
 	github.com/mattn/go-isatty v0.0.20
