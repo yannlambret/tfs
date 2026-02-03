@@ -77,7 +77,7 @@ func (c *LocalCache) Load() error {
 
 		// Update last release based on version order.
 		if c.LastRelease != nil {
-			constraint, _ := version.NewConstraint(">" + c.LastRelease.Version.String())
+			constraint, _ := newConstraintExtended(">" + c.LastRelease.Version.String())
 			if !constraint.Check(v) {
 				continue
 			}
@@ -185,7 +185,7 @@ func (c *LocalCache) PruneUntil(v *version.Version) error {
 
 	// Ignoring potential errors here because we have already
 	// checked that the argument is a valid semantic version.
-	constraint, _ := version.NewConstraint("<" + v.String())
+	constraint, _ := newConstraintExtended("<" + v.String())
 
 	for _, release := range c.releases {
 		if constraint.Check(release.Version) {
@@ -258,7 +258,7 @@ func (c *LocalCache) AutoClean() {
 		// Drop the oldest minor releases if needed.
 		if n := len(minorKeys) - viper.GetInt("cache_minor_version_nb"); n > 0 {
 			for _, v := range minorKeys[:n] {
-				constraint, _ := version.NewConstraint(fmt.Sprintf("~>%s", v.String()))
+				constraint, _ := newConstraintExtended(fmt.Sprintf("~> %s", v.String()))
 				for _, release := range c.releases {
 					if constraint.Check(release.Version) && !release.SameAs(c.currentRelease) {
 						release.Remove()
