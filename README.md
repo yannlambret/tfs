@@ -49,6 +49,46 @@ the version to use:
 tfs 1.10.1
 ```
 
+### 🎯 Respect Terraform version constraints (including `~>`)
+
+When you run `tfs` without specifying a version, it inspects Terraform configuration files
+in the current directory to infer which version to activate.
+
+`tfs` understands standard comparison operators (`=`, `!=`, `>`, `>=`, `<`, `<=`) and also
+supports the Terraform / HashiCorp pessimistic operator `~>` (sometimes called the "compatible with" operator).
+
+Supported forms and their expansion:
+
+```
+~> 1        => >=1.0.0, <2.0.0
+~> 1.2      => >=1.2.0, <1.3.0
+~> 1.2.3    => >=1.2.3, <1.3.0
+```
+
+Multiple constraints are ANDed (`,` separator) and any `||` segments (if present) act as OR, following the semantics of the underlying `hashicorp/go-version` library.
+
+Examples:
+
+```
+# Accept any 1.2.x (but not 1.3.0):
+required_version = "~> 1.2"
+
+# Accept patch upgrades starting at 1.2.5 (but still < 1.3.0):
+required_version = "~> 1.2, >= 1.2.5"
+
+# Accept any 1.x:
+required_version = "~> 1"
+
+# Mixed with other operators:
+required_version = ">= 1.5.0, ~> 1.6"
+```
+
+Invalid uses (e.g. `~> 1.alpha`, `~> 1..2`, `~> ~> 1.2`) are rejected and will cause `tfs` to report an error instead of choosing a wrong version silently.
+
+The `~>` constraints are internally expanded before being passed to the version resolver; this ensures consistent behavior without pulling additional parsing libraries.
+
+> Tip: If no constraint is found, `tfs` simply activates the most recently downloaded Terraform version.
+
 ### 📂 List cached versions
 
 ```bash
