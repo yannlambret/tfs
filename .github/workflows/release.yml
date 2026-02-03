@@ -1,7 +1,7 @@
 name: release
 
 env:
-  GO_VERSION: '1.23'
+  GO_VERSION: '1.24'
 
 permissions:
   contents: write
@@ -56,6 +56,11 @@ jobs:
           filename="${{ steps.name.outputs.filename }}"
           tar -czf "dist/${filename}.tar.gz" -C build tfs
           zip -j "dist/${filename}.zip" build/tfs
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
