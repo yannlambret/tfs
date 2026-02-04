@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const tfsVersion = "v1.3.1"
+const tfsVersion = "v1.4.0"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
@@ -78,7 +78,7 @@ func InitConfig() {
 	// Find and read the configuration file.
 	err = viper.ReadInConfig()
 
-	slog := slog.With(
+	logger := slog.With(
 		"configDirectory", filepath.Dir(viper.ConfigFileUsed()),
 		"fileName", filepath.Base(viper.ConfigFileUsed()),
 	)
@@ -87,12 +87,12 @@ func InitConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Ignoring this.
 		} else {
-			slog.Error("Failed to load tfs configuration", "error", err)
+			logger.Error("Failed to load tfs configuration", "error", err)
 		}
 	} else {
 		// Configuration file found and successfully parsed.
 		if !viper.GetBool("quiet") {
-			slog.Info("Configuration loaded")
+			logger.Info("Configuration loaded")
 		}
 	}
 }
