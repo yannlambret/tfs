@@ -53,7 +53,7 @@ func (c *LocalCache) NewRelease(v *version.Version) *release {
 // Load builds the cache state based on the Terraform versions
 // that have already been downloaded in the cache directory.
 func (c *LocalCache) Load() error {
-	slog := slog.With(slog.String("cacheDirectory", c.directory))
+	logger := slog.With(slog.String("cacheDirectory", c.directory))
 
 	c.releases = make(map[string]*release)
 	c.LastRelease = nil
@@ -61,15 +61,15 @@ func (c *LocalCache) Load() error {
 	// Cache state.
 	files, err := afero.Glob(AppFs, filepath.Join(c.directory, viper.GetString("terraform_file_name_prefix")+"*"))
 	if err != nil {
-		slog.Error("Failed to load cache data", "error", err)
+		logger.Error("Failed to load cache data", "error", err)
 		return err
 	}
 
 	for _, fileName := range files {
 		v, err := versionFromFileName(filepath.Base(fileName))
 		if err != nil {
-			slog := slog.With("fileName", filepath.Base(fileName))
-			slog.Error("Invalid file name", "error", err)
+			fileLogger := logger.With("fileName", filepath.Base(fileName))
+			fileLogger.Error("Invalid file name", "error", err)
 			return err
 		}
 		r := c.NewRelease(v)
@@ -127,12 +127,12 @@ func (c *LocalCache) Size() (uint64, error) {
 	// Reload cache contents.
 	c.Load()
 
-	slog := slog.With(slog.String("cacheDirectory", c.directory))
+	logger := slog.With(slog.String("cacheDirectory", c.directory))
 
 	for _, release := range c.releases {
 		releaseSize, err := release.Size()
 		if err != nil {
-			slog.Error("Failed to get cache size", "error", err)
+			logger.Error("Failed to get cache size", "error", err)
 			return 0, err
 		}
 		size += releaseSize
@@ -215,6 +215,67 @@ func (c *LocalCache) PruneUntil(v *version.Version) error {
 	)
 
 	return nil
+}
+
+// GetTfVersion looks for a version constraint in Terraform manifest files
+// and resolves it to a specific version from the cache.
+func (c *LocalCache) GetTfVersion() (*version.Version, error) {
+	constraintStr, err := GetTfVersionConstraint()
+	if err != nil {
+		return nil, err
+	}
+
+	if constraintStr == "" {
+		// No constraint found.
+		return nil, nil
+	}
+
+	logger := slog.With(
+		"constraint", constraintStr,
+	)
+
+	// First, try to parse as a plain version (e.g., "1.14.1" or "= 1.14.1").
+	// This handles the common case of exact version specifications.
+	if v, err := version.NewVersion(constraintStr); err == nil {
+		// It's a plain version string, return it directly.
+		logger.Info("Found version requirement", "version", v.String())
+		return v, nil
+	}
+
+	// Parse as a constraint (supports ~> operator and ranges).
+	constraint, err := newConstraintExtended(constraintStr)
+	if err != nil {
+		logger.Error("Failed to parse Terraform version constraint", "error", err)
+		return nil, err
+	}
+
+	// Find the best matching version from the cache.
+	var bestMatch *version.Version
+	for _, release := range c.releases {
+		if constraint.Check(release.Version) {
+			if bestMatch == nil || release.Version.GreaterThan(bestMatch) {
+				bestMatch = release.Version
+			}
+		}
+	}
+
+	if bestMatch != nil {
+		logger.Info("Resolved version constraint", "version", bestMatch.String())
+		return bestMatch, nil
+	}
+
+	// No matching version in cache. Try to extract a suitable version to download.
+	// For pessimistic constraints like "~> 1.12.0", extract the base version.
+	// For range constraints like ">= 1.12.0", extract the minimum version.
+	candidateVer := extractVersionFromConstraint(constraintStr)
+	if candidateVer != nil {
+		logger.Info("No cached match, will download base version from constraint", "version", candidateVer.String())
+		return candidateVer, nil
+	}
+
+	// We can't determine an exact version to download.
+	logger.Error("No cached version matches constraint and cannot determine exact version to download")
+	return nil, fmt.Errorf("no cached version satisfies constraint %s; please specify an exact version or install a matching version first", constraintStr)
 }
 
 func (c *LocalCache) AutoClean() {

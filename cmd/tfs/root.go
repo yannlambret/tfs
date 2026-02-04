@@ -78,7 +78,7 @@ func Execute() {
 			v, _ = version.NewVersion(args[0])
 		} else {
 			// If no argument is provided, try to get the version from configuration.
-			if v, err = tfs.GetTfVersion(); err != nil {
+			if v, err = cache.GetTfVersion(); err != nil {
 				return err
 			}
 		}

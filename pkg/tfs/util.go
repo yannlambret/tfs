@@ -89,3 +89,48 @@ func newConstraintExtended(expr string) (version.Constraints, error) {
 	}
 	return version.NewConstraint(expanded)
 }
+
+// normalizeVersionString adds missing segments to make a complete semantic version.
+// "1" -> "1.0.0", "1.2" -> "1.2.0", "1.2.3" -> "1.2.3"
+func normalizeVersionString(versionStr string) string {
+	parts := strings.Split(versionStr, ".")
+	switch len(parts) {
+	case 1:
+		return versionStr + ".0.0"
+	case 2:
+		return versionStr + ".0"
+	default:
+		return versionStr
+	}
+}
+
+// extractVersionFromConstraint attempts to extract a downloadable version from a constraint string.
+// For "~> 1.12.0", returns 1.12.0 (the minimum satisfying version)
+// For ">= 1.12.0", returns 1.12.0
+// For complex or unsupported constraints, returns nil
+func extractVersionFromConstraint(constraint string) *version.Version {
+	constraint = strings.TrimSpace(constraint)
+
+	// Handle pessimistic constraints using the existing regex
+	if strings.Contains(constraint, "~>") {
+		if matches := pessimisticConstraintRe.FindStringSubmatch(constraint); len(matches) > 1 {
+			versionStr := normalizeVersionString(matches[1])
+			if v, err := version.NewVersion(versionStr); err == nil {
+				return v
+			}
+		}
+		return nil
+	}
+
+	// Handle >= constraints (extract the minimum version)
+	if strings.HasPrefix(constraint, ">=") {
+		versionStr := strings.TrimSpace(strings.TrimPrefix(constraint, ">="))
+		if v, err := version.NewVersion(versionStr); err == nil {
+			return v
+		}
+	}
+
+	// For other constraint types (>, <, <=, !=, complex), we can't determine
+	// a specific version to download, so return nil.
+	return nil
+}

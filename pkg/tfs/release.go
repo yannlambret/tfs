@@ -24,7 +24,7 @@ type release struct {
 // Install downloads the required Terraform binary
 // and put it in the cache directory.
 func (r *release) Install() error {
-	slog := slog.With(
+	logger := slog.With(
 		"cacheDirectory", r.parentCache.directory,
 		"version", r.Version.String(),
 		"fileName", r.fileName,
@@ -36,7 +36,7 @@ func (r *release) Install() error {
 
 	// Ensure parent cache directory exists.
 	if err := AppFs.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
-		slog.Error("Failed to create cache directory", "error", err)
+		logger.Error("Failed to create cache directory", "error", err)
 		return err
 	}
 
@@ -45,7 +45,7 @@ func (r *release) Install() error {
 		i := install.NewInstaller()
 		defer i.Remove(ctx)
 
-		slog.Info("Downloading Terraform")
+		logger.Info("Downloading Terraform")
 
 		srcPath, err := i.Install(ctx, []src.Installable{
 			&releases.ExactVersion{
@@ -54,18 +54,18 @@ func (r *release) Install() error {
 			},
 		})
 		if err != nil {
-			slog.Error("Download failed", "error", err)
+			logger.Error("Download failed", "error", err)
 			return err
 		}
 		// Move downloaded file.
 		b, err := os.ReadFile(srcPath)
 		if err != nil {
-			slog.Error("Unable to read downloaded file", "error", err, "srcPath", srcPath)
+			logger.Error("Unable to read downloaded file", "error", err, "srcPath", srcPath)
 			return err
 		}
 		err = os.WriteFile(targetPath, b, os.ModePerm)
 		if err != nil {
-			slog.Error("Unable to move downloaded file to cache", "error", err, "targetPath", targetPath)
+			logger.Error("Unable to move downloaded file to cache", "error", err, "targetPath", targetPath)
 			return err
 		}
 	}
@@ -87,20 +87,21 @@ func (r *release) Activate() error {
 		target     = filepath.Join(r.parentCache.directory, r.fileName)
 	)
 
-	slog := slog.With(
+	userBinLogger := slog.With(
 		"userBinDir", userBinDir,
 	)
 
 	if _, err := AppFs.Stat(userBinDir); os.IsNotExist(err) {
-		slog.Info("Creating user local bin directory")
+		userBinLogger.Info("Creating user local bin directory")
 		if err := AppFs.MkdirAll(userBinDir, os.ModePerm); err != nil {
-			slog.Error("Operation failed", "error", err)
+			userBinLogger.Error("Operation failed", "error", err)
 			return err
 		}
-		slog.Warn("Make sure to add local bin directory to PATH environment variable")
+		userBinLogger.Warn("Make sure to add local bin directory to PATH environment variable")
 	}
 
-	slog = slog.With(
+	// Create a new logger for activation logs (doesn't include userBinDir).
+	activateLogger := slog.With(
 		"version", r.Version.String(),
 		"target", target,
 		"symlink", symlink,
@@ -108,25 +109,25 @@ func (r *release) Activate() error {
 
 	// Check if the desired version is already active.
 	if r.SameAs(r.parentCache.activeRelease) {
-		slog.Info("Version is already active")
+		activateLogger.Info("Version is already active")
 		return nil
 	}
 
 	// Remove the link if it exists.
 	if _, b, err := AppFs.LstatIfPossible(symlink); !b {
-		slog.Warn("The operating system does not seem to support `os.Lstat`", "error", err)
+		activateLogger.Warn("The operating system does not seem to support `os.Lstat`", "error", err)
 	} else if err == nil {
 		AppFs.Remove(symlink)
 	}
 
 	// Create the symbolic link.
 	if err := AppFs.SymlinkIfPossible(target, symlink); err != nil {
-		slog.Error("Failed to create symlink", "error", "err")
+		activateLogger.Error("Failed to create symlink", "error", "err")
 		return err
 	}
 
 	r.parentCache.activeRelease = r
-	slog.Info("New active version")
+	activateLogger.Info("New active version")
 
 	return nil
 }
@@ -139,7 +140,7 @@ func (r *release) Remove() error {
 		target     = filepath.Join(r.parentCache.directory, r.fileName)
 	)
 
-	slog := slog.With(
+	logger := slog.With(
 		"version", r.Version.String(),
 		"fileName", target,
 	)
@@ -150,7 +151,7 @@ func (r *release) Remove() error {
 	}
 
 	if err := AppFs.Remove(target); err != nil {
-		slog.Error("Failed to remove Terraform binary", "error", err)
+		logger.Error("Failed to remove Terraform binary", "error", err)
 		return err
 	}
 
@@ -161,7 +162,7 @@ func (r *release) Remove() error {
 func (r *release) Size() (uint64, error) {
 	target := filepath.Join(r.parentCache.directory, r.fileName)
 
-	slog := slog.With(
+	logger := slog.With(
 		"version", r.Version.String(),
 		"fileName", target,
 	)
@@ -169,7 +170,7 @@ func (r *release) Size() (uint64, error) {
 	fi, err := AppFs.Stat(target)
 
 	if err != nil {
-		slog.Error("Failed to get Terraform binary information", "error", err)
+		logger.Error("Failed to get Terraform binary information", "error", err)
 		return 0, err
 	}
 
