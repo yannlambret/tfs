@@ -48,13 +48,13 @@ func ResolveVersion(constraintStr string, cachedVersions []*version.Version) (*v
 		return nil, nil
 	}
 
-	logger := slog.With("constraint", constraintStr)
-
 	// Try to parse as a plain version (e.g., "1.14.1" or "= 1.14.1").
 	if v, err := version.NewVersion(constraintStr); err == nil {
-		logger.Info("Found version requirement", "version", v.String())
+		slog.Info("Found version requirement", "version", v.String())
 		return v, nil
 	}
+
+	logger := slog.With("constraint", constraintStr)
 
 	// Parse as a constraint (go-version natively supports ~>, >=, <, etc.).
 	constraint, err := version.NewConstraint(constraintStr)
