@@ -14,7 +14,7 @@ func TestCacheLoad(t *testing.T) {
 	defer cleanup()
 
 	v := "1.9.0"
-	writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), []byte("dummy content"))
+	writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), []byte("dummy content"))
 
 	cache := NewLocalCache(cacheDir)
 
@@ -49,9 +49,12 @@ func TestCacheSize(t *testing.T) {
 	v := "1.9.0"
 
 	content := []byte("dummy content")
-	writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), content)
+	writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), content)
 
 	cache := NewLocalCache(cacheDir)
+	if err := cache.Load(); err != nil {
+		t.Fatalf("Cache.Load() failed: %v", err)
+	}
 	size, err := cache.Size()
 
 	if err != nil {
@@ -70,7 +73,7 @@ func TestCachePrune(t *testing.T) {
 	versions := []string{"1.9.0", "1.10.0"}
 
 	for _, v := range versions {
-		writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), []byte("dummy content"))
+		writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), []byte("dummy content"))
 	}
 
 	cache := NewLocalCache(cacheDir)
@@ -84,7 +87,7 @@ func TestCachePrune(t *testing.T) {
 	}
 
 	for _, v := range versions {
-		filePath := filepath.Join(cacheDir, getFilePrefix()+v)
+		filePath := filepath.Join(cacheDir, testFilePrefix+v)
 		if exists, _ := afero.Exists(AppFs, filePath); exists {
 			t.Errorf("Expected file %s to be removed", filePath)
 		}
@@ -98,7 +101,7 @@ func TestCachePruneUntil(t *testing.T) {
 	versions := []string{"1.9.0", "1.10.0", "1.11.0"}
 
 	for _, v := range versions {
-		writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), []byte("dummy content"))
+		writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), []byte("dummy content"))
 	}
 
 	cache := NewLocalCache(cacheDir)
@@ -114,13 +117,13 @@ func TestCachePruneUntil(t *testing.T) {
 		t.Fatalf("Cache.PruneUntil() failed: %v", err)
 	}
 
-	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+"1.9.0")); exists {
+	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+"1.9.0")); exists {
 		t.Errorf("Expected 1.9.0 to be pruned")
 	}
-	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+"1.10.0")); !exists {
+	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+"1.10.0")); !exists {
 		t.Errorf("Expected 1.10.0 to remain")
 	}
-	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+"1.11.0")); !exists {
+	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+"1.11.0")); !exists {
 		t.Errorf("Expected 1.11.0 to remain")
 	}
 }
@@ -135,7 +138,7 @@ func TestCacheAutoClean_DefaultConfig(t *testing.T) {
 	versions := []string{"1.9.0", "1.10.0", "1.11.0"}
 
 	for _, v := range versions {
-		writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), []byte("dummy content"))
+		writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), []byte("dummy content"))
 	}
 
 	cache := NewLocalCache(cacheDir)
@@ -145,7 +148,7 @@ func TestCacheAutoClean_DefaultConfig(t *testing.T) {
 
 	cache.AutoClean()
 
-	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+"1.9.0")); exists {
+	if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+"1.9.0")); exists {
 		t.Errorf("Expected 1.9.0 to be removed")
 	}
 }
@@ -161,7 +164,7 @@ func TestCacheAutoClean_MinorVersionLimit(t *testing.T) {
 	releases := []string{"1.6.5", "1.6.6", "1.8.1", "1.9.2", "1.9.8", "1.10.1", "1.10.2"}
 
 	for _, v := range releases {
-		writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), []byte("dummy content"))
+		writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), []byte("dummy content"))
 	}
 
 	cache := NewLocalCache(cacheDir)
@@ -178,7 +181,7 @@ func TestCacheAutoClean_MinorVersionLimit(t *testing.T) {
 
 	t.Run("should remain", func(t *testing.T) {
 		for _, v := range shouldRemain {
-			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+v)); !exists {
+			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+v)); !exists {
 				t.Errorf("Expected version %s to remain", v)
 			}
 		}
@@ -186,7 +189,7 @@ func TestCacheAutoClean_MinorVersionLimit(t *testing.T) {
 
 	t.Run("should be removed", func(t *testing.T) {
 		for _, v := range shouldBeRemoved {
-			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+v)); exists {
+			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+v)); exists {
 				t.Errorf("Expected version %s to be removed", v)
 			}
 		}
@@ -203,7 +206,7 @@ func TestCacheAutoClean_PatchVersionLimit(t *testing.T) {
 
 	releases := []string{"1.10.0", "1.10.1", "1.10.2", "1.10.3", "1.10.4"}
 	for _, v := range releases {
-		writeTestFile(t, filepath.Join(cacheDir, getFilePrefix()+v), []byte("dummy content"))
+		writeTestFile(t, filepath.Join(cacheDir, testFilePrefix+v), []byte("dummy content"))
 	}
 
 	cache := NewLocalCache(cacheDir)
@@ -220,7 +223,7 @@ func TestCacheAutoClean_PatchVersionLimit(t *testing.T) {
 
 	t.Run("should remain", func(t *testing.T) {
 		for _, v := range shouldRemain {
-			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+v)); !exists {
+			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+v)); !exists {
 				t.Errorf("Expected version %s to remain", v)
 			}
 		}
@@ -228,7 +231,7 @@ func TestCacheAutoClean_PatchVersionLimit(t *testing.T) {
 
 	t.Run("should be removed", func(t *testing.T) {
 		for _, v := range shouldBeRemoved {
-			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, getFilePrefix()+v)); exists {
+			if exists, _ := afero.Exists(AppFs, filepath.Join(cacheDir, testFilePrefix+v)); exists {
 				t.Errorf("Expected version %s to be removed", v)
 			}
 		}

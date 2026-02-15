@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"reflect"
 
 	"github.com/hashicorp/go-version"
 	install "github.com/hashicorp/hc-install"
@@ -122,7 +121,7 @@ func (r *release) Activate() error {
 
 	// Create the symbolic link.
 	if err := AppFs.SymlinkIfPossible(target, symlink); err != nil {
-		activateLogger.Error("Failed to create symlink", "error", "err")
+		activateLogger.Error("Failed to create symlink", "error", err)
 		return err
 	}
 
@@ -155,6 +154,9 @@ func (r *release) Remove() error {
 		return err
 	}
 
+	// Keep the in-memory cache consistent with disk.
+	delete(r.parentCache.releases, r.Version.String())
+
 	return nil
 }
 
@@ -179,5 +181,8 @@ func (r *release) Size() (uint64, error) {
 
 // SameAs compares the current release and the given release.
 func (r *release) SameAs(ref *release) bool {
-	return reflect.DeepEqual(r, ref)
+	if r == nil || ref == nil {
+		return r == ref
+	}
+	return r.Version.Equal(ref.Version)
 }

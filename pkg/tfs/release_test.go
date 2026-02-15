@@ -18,7 +18,7 @@ func TestNewRelease(t *testing.T) {
 	cache := NewLocalCache(cacheDir)
 	release := cache.NewRelease(v)
 
-	expectedFileName := getFilePrefix() + v.String()
+	expectedFileName := testFilePrefix + v.String()
 
 	if release.Version.String() != v.String() {
 		t.Errorf("Expected version %s, got %s", v.String(), release.Version.String())
@@ -38,7 +38,7 @@ func TestReleaseActivateCreatesSymlink(t *testing.T) {
 	binDir := viper.GetString("user_bin_directory")
 	tfVersion := "1.10.0"
 
-	binaryPath := filepath.Join(cacheDir, getFilePrefix()+tfVersion)
+	binaryPath := filepath.Join(cacheDir, testFilePrefix+tfVersion)
 	writeTestFile(t, binaryPath, []byte("dummy content"))
 
 	v, _ := version.NewVersion(tfVersion)

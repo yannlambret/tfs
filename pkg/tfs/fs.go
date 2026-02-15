@@ -3,10 +3,8 @@ package tfs
 import (
 	"os"
 	"path/filepath"
-	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/spf13/viper"
 )
 
 type AferoFs struct {
@@ -39,25 +37,3 @@ func (a *AferoFs) EvalSymlinksIfPossible(path string) (string, bool, error) {
 
 // Default to real filesystem.
 var AppFs = &AferoFs{afero.NewOsFs()}
-
-// Set up a temporary test filesystem using Afero.
-func initTestFS(tb testing.TB) (string, func()) {
-	tb.Helper()
-	tempDir := tb.TempDir()
-
-	// Create a real OS-based filesystem using a temp directory.
-	AppFs = &AferoFs{Fs: afero.NewBasePathFs(afero.NewOsFs(), tempDir)}
-
-	// Set required Viper config values.
-	viper.Set("terraform_file_name_prefix", "terraform_")
-	viper.Set("user_bin_directory", filepath.Join(tempDir, "bin"))
-
-	// Ensure directories exist.
-	if err := AppFs.MkdirAll(viper.GetString("user_bin_directory"), 0755); err != nil {
-		tb.Fatalf("Failed to create bin dir: %v", err)
-	}
-
-	return tempDir, func() {
-		viper.Reset()	
-	}
-}

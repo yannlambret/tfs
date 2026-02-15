@@ -62,10 +62,7 @@ func Execute() {
 
 	// Set the root command’s RunE function to use the cache.
 	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		var (
-			v   *version.Version
-			err error
-		)
+		var v *version.Version
 
 		// Load the cache contents.
 		if err := cache.Load(); err != nil {
@@ -78,7 +75,11 @@ func Execute() {
 			v, _ = version.NewVersion(args[0])
 		} else {
 			// If no argument is provided, try to get the version from configuration.
-			if v, err = cache.GetTfVersion(); err != nil {
+			constraintStr, err := tfs.GetTfVersionConstraint()
+			if err != nil {
+				return err
+			}
+			if v, err = tfs.ResolveVersion(constraintStr, cache.CachedVersions()); err != nil {
 				return err
 			}
 		}
