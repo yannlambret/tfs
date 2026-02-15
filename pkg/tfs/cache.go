@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/hashicorp/go-version"
 	"github.com/mattn/go-isatty"
@@ -76,11 +78,8 @@ func (c *LocalCache) Load() error {
 		c.releases[v.String()] = r
 
 		// Update last release based on version order.
-		if c.LastRelease != nil {
-			constraint, _ := newConstraintExtended(">" + c.LastRelease.Version.String())
-			if !constraint.Check(v) {
-				continue
-			}
+		if c.LastRelease != nil && !v.GreaterThan(c.LastRelease.Version) {
+			continue
 		}
 		c.LastRelease = r
 	}
@@ -91,6 +90,15 @@ func (c *LocalCache) Load() error {
 // IsEmpty allows to check if the cache is empty.
 func (c *LocalCache) IsEmpty() bool {
 	return len(c.releases) == 0
+}
+
+// CachedVersions returns all cached versions.
+func (c *LocalCache) CachedVersions() []*version.Version {
+	versions := make([]*version.Version, 0, len(c.releases))
+	for _, r := range c.releases {
+		versions = append(versions, r.Version)
+	}
+	return versions
 }
 
 // List command displays the contents of the local cache.
@@ -123,9 +131,6 @@ func (c *LocalCache) List() error {
 // Size returns the cache total size.
 func (c *LocalCache) Size() (uint64, error) {
 	var size uint64
-
-	// Reload cache contents.
-	c.Load()
 
 	logger := slog.With(slog.String("cacheDirectory", c.directory))
 
@@ -183,12 +188,8 @@ func (c *LocalCache) PruneUntil(v *version.Version) error {
 		reclaimed uint64
 	)
 
-	// Ignoring potential errors here because we have already
-	// checked that the argument is a valid semantic version.
-	constraint, _ := newConstraintExtended("<" + v.String())
-
 	for _, release := range c.releases {
-		if constraint.Check(release.Version) {
+		if release.Version.LessThan(v) {
 			releaseSize, err := release.Size()
 			if err != nil {
 				return err
@@ -215,67 +216,6 @@ func (c *LocalCache) PruneUntil(v *version.Version) error {
 	)
 
 	return nil
-}
-
-// GetTfVersion looks for a version constraint in Terraform manifest files
-// and resolves it to a specific version from the cache.
-func (c *LocalCache) GetTfVersion() (*version.Version, error) {
-	constraintStr, err := GetTfVersionConstraint()
-	if err != nil {
-		return nil, err
-	}
-
-	if constraintStr == "" {
-		// No constraint found.
-		return nil, nil
-	}
-
-	logger := slog.With(
-		"constraint", constraintStr,
-	)
-
-	// First, try to parse as a plain version (e.g., "1.14.1" or "= 1.14.1").
-	// This handles the common case of exact version specifications.
-	if v, err := version.NewVersion(constraintStr); err == nil {
-		// It's a plain version string, return it directly.
-		logger.Info("Found version requirement", "version", v.String())
-		return v, nil
-	}
-
-	// Parse as a constraint (supports ~> operator and ranges).
-	constraint, err := newConstraintExtended(constraintStr)
-	if err != nil {
-		logger.Error("Failed to parse Terraform version constraint", "error", err)
-		return nil, err
-	}
-
-	// Find the best matching version from the cache.
-	var bestMatch *version.Version
-	for _, release := range c.releases {
-		if constraint.Check(release.Version) {
-			if bestMatch == nil || release.Version.GreaterThan(bestMatch) {
-				bestMatch = release.Version
-			}
-		}
-	}
-
-	if bestMatch != nil {
-		logger.Info("Resolved version constraint", "version", bestMatch.String())
-		return bestMatch, nil
-	}
-
-	// No matching version in cache. Try to extract a suitable version to download.
-	// For pessimistic constraints like "~> 1.12.0", extract the base version.
-	// For range constraints like ">= 1.12.0", extract the minimum version.
-	candidateVer := extractVersionFromConstraint(constraintStr)
-	if candidateVer != nil {
-		logger.Info("No cached match, will download base version from constraint", "version", candidateVer.String())
-		return candidateVer, nil
-	}
-
-	// We can't determine an exact version to download.
-	logger.Error("No cached version matches constraint and cannot determine exact version to download")
-	return nil, fmt.Errorf("no cached version satisfies constraint %s; please specify an exact version or install a matching version first", constraintStr)
 }
 
 func (c *LocalCache) AutoClean() {
@@ -319,7 +259,7 @@ func (c *LocalCache) AutoClean() {
 		// Drop the oldest minor releases if needed.
 		if n := len(minorKeys) - viper.GetInt("cache_minor_version_nb"); n > 0 {
 			for _, v := range minorKeys[:n] {
-				constraint, _ := newConstraintExtended(fmt.Sprintf("~> %s", v.String()))
+				constraint, _ := version.NewConstraint(fmt.Sprintf("~> %s", v.String()))
 				for _, release := range c.releases {
 					if constraint.Check(release.Version) && !release.SameAs(c.currentRelease) {
 						release.Remove()
@@ -358,4 +298,14 @@ func (c *LocalCache) AutoClean() {
 			}
 		}
 	}
+}
+
+// versionFromFileName extracts semantic version from Terraform binary name.
+func versionFromFileName(fileName string) (*version.Version, error) {
+	return version.NewVersion(strings.ReplaceAll(fileName, viper.GetString("terraform_file_name_prefix"), ""))
+}
+
+// formatSize returns size in a human readable format.
+func formatSize(size uint64) string {
+	return humanize.Bytes(size)
 }

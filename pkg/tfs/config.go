@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const tfsVersion = "v1.4.0"
+const tfsVersion = "v1.5.0"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
