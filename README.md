@@ -23,6 +23,10 @@ go build -o build/tfs
 ```
 Alternatively, you can download a prebuilt binary for your platform from the [Releases page](https://github.com/yannlambret/tfs/releases). \
 Then place the resulting binary somewhere in your `PATH`.
+macOS users may have to run this kind of command to mark the binary as safe:
+```bash
+sudo xattr -d com.apple.quarantine ~/.local/bin/tfs
+```
 
 ---
 
