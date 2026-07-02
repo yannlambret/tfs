@@ -12,8 +12,8 @@ on:
       - 'v*'
 
 jobs:
-  release:
-    name: Build & Release
+  build:
+    name: Build & Archive
     runs-on: ubuntu-latest
 
     strategy:
@@ -56,6 +56,24 @@ jobs:
           filename="${{ steps.name.outputs.filename }}"
           tar -czf "dist/${filename}.tar.gz" -C build tfs
           zip -j "dist/${filename}.zip" build/tfs
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.filename }}
+          path: dist/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
 
       - name: Generate checksums
         run: |
