@@ -9,7 +9,7 @@ import (
 )
 
 // Current software version.
-const tfsVersion = "v1.4.2"
+const tfsVersion = "v1.4.3"
 
 func InitConfig() {
 	userHomeDir, err := os.UserHomeDir()
@@ -31,6 +31,10 @@ func InitConfig() {
 
 	viper.AddConfigPath(filepath.Join(userConfigDir, "tfs"))
 	viper.SetConfigName("config")
+
+	// Allow all config keys to be overridden via TFS_* environment variables.
+	viper.SetEnvPrefix("TFS")
+	viper.AutomaticEnv()
 
 	// Local cache directory is "${XDG_CACHE_HOME}/tfs"
 	// by default, or "${HOME}/.cache/tfs" as a fallback.
